@@ -37,14 +37,95 @@ The package is distributed as source ESM and CSS. It has no bundler or generated
 
 The consuming website owns its schemas, content, templates, authentication, authorization, session behavior, persistence, publication, image storage, and backend enforcement. Host operations are supplied to the editor through its existing callbacks; credentials and provider-specific code do not belong in this package.
 
+## Field preview attributes
+
+Fields continue to preview as text (`textContent`), links (`href`), or images (`src`) by default. To preview a value into a different safe HTML attribute, add `previewAttribute` to the field schema:
+
+```js
+{
+  key: "alt",
+  label: "Alternative text",
+  type: CMS_FIELD_TYPES.TEXT,
+  previewAttribute: "alt",
+}
+```
+
+The supported attribute bindings are `alt`, `title`, `aria-label`, and `poster`. Event handlers, `style`, `srcdoc`, and other executable or markup-bearing targets are rejected during schema validation. Unsafe URL schemes are rejected at preview time. Values are applied with `setAttribute`; the editor never generates HTML from field values.
+
+The existing `data-cms-preview-field="alt"` target contract is unchanged. Focusing or clicking the corresponding editor control highlights that same target and scrolls the website preview only when the target is not comfortably visible. This navigation is independent of the Preview Changes toggle and respects reduced-motion preferences.
+
+## Repeatable-item labels
+
+Sections whose content path ends in an array position, such as `services.cards.0`, receive stable structural labels. Set an optional schema `itemNoun` to choose the noun:
+
+```js
+{
+  id: "service-card",
+  label: "Service card",
+  itemNoun: "Card",
+  fields: [/* ... */],
+}
+```
+
+The drawer renders `Card 1`, `Card 2`, and so on in current section order. Without `itemNoun`, it renders `Section 1`, `Section 2`, and so on. Non-indexed, top-level sections continue to use `schema.label`. Labels never derive from editable field values.
+
+## Revision-history integration
+
+Pass the existing revision provider contract through `initializeCmsEditor({ revisionHistory })`. The package mounts `createRevisionHistory()` into its own drawer, enables its own Revision History menu action, and owns opening, closing, and navigation:
+
+```js
+const editor = initializeCmsEditor({
+  requireSchema,
+  revisionHistory: {
+    provider: {
+      list: ({ page, head, highlightedRevision }) => revisions.list({ page, head, highlightedRevision }),
+      view: (revisionId) => revisions.view(revisionId),
+      restore: (revisionId, draftVersion) => revisions.restore(revisionId, draftVersion),
+    },
+    onRestored: async (draft, draftVersion) => {
+      // Fetch or otherwise establish the authoritative restored content,
+      // then reconcile through the public editor instance API.
+      editor.reconcileSavedContent(draft, { hasSavedDraft: true });
+    },
+    canRestore: () => !editor.hasUnsavedChanges(),
+  },
+});
+```
+
+All other `createRevisionHistory()` options remain available inside `revisionHistory`, including provenance and draft-divergence callbacks. A missing or incomplete provider leaves the menu action disabled. Hosts must not query or mount into package-internal history elements.
+
+## Workflow confirmations
+
+Package-owned Save Draft, Revert, and Publish dialogs are opt-in through `workflowConfirmations`:
+
+```js
+initializeCmsEditor({
+  requireSchema,
+  workflowConfirmations: {
+    save: { draftNote: true },
+    revert: true,
+    publish: true,
+  },
+  async saveChanges(request) {
+    const note = request.saveData?.draftNote ?? "";
+    await saveDraft({ changes: request.changes, note });
+  },
+  revertChanges,
+  publishChanges,
+});
+```
+
+Use `save: true` for confirmation without a note. `save.draftNoteLabel` can customize the note label. Cancellation never invokes the operation callback. Notes are returned as `request.saveData.draftNote`; the package does not persist, validate, or interpret them.
+
+The legacy `confirmSave`, `confirmRevert`, and `confirmPublish` callbacks remain supported and take precedence over the corresponding package-owned dialog when both are supplied. Omitting `workflowConfirmations` preserves existing behavior.
+
 ## Verify locally
 
 ```bash
-npm test
-npm run pack:check
+npm run verify
 ```
 
-`npm test` checks the public API, CSS entrypoint, package metadata, and host-isolation boundary. `npm run pack:check` shows the files that would be included in the package artifact. To create and inspect the actual artifact, run `npm pack`.
+`npm run verify` runs the test suite and checks the files that would be included in the package artifact. For targeted work, use `npm test` or `npm run pack:check` individually. To create and inspect the actual artifact, run `npm pack`.
 
 To create a ZIP of the standalone working tree:
 

@@ -13,9 +13,10 @@ import {
 
 import { installCmsDrawerNavigation } from "./drawer-navigation.js";
 
+import { getCmsSectionLabel } from "./section-label.js";
+
 const CMS_DRAWER_ID = "cms-editor-drawer";
 const CMS_EDITOR_OPEN_CLASS = "cms-editor-surface-open";
-
 
 function attachHeaderActions(
     drawer,
@@ -163,6 +164,7 @@ export function createCmsDrawer({
                 sectionPath,
                 schema,
             },
+            entryIndex,
         ) => {
             const details =
                 documentObject.createElement(
@@ -186,7 +188,10 @@ export function createCmsDrawer({
             summary.className =
                 "cms-drawer-section__summary";
 
-            summary.textContent = schema.label;
+            summary.textContent = getCmsSectionLabel({
+                sectionEntries,
+                entryIndex,
+            });
 
             const fields =
                 documentObject.createElement(

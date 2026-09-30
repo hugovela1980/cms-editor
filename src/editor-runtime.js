@@ -31,6 +31,14 @@ import {
 } from "./preview-preference.js";
 
 import {
+    mountConfiguredRevisionHistory,
+} from "./revision-integration.js";
+
+import {
+    getCmsStatusSurface,
+} from "./status-surface.js";
+
+import {
     createCmsGlobalEditControl,
     discoverCmsSections,
     installCmsEditControlVisibilityShortcut,
@@ -40,6 +48,10 @@ import {
 import {
     installCmsUnsavedChangesWarning,
 } from "./unsaved-warning.js";
+
+import {
+    createCmsWorkflowConfirmers,
+} from "./workflow-confirmation.js";
 
 export function initializeCmsEditor({
     requireSchema,
@@ -65,6 +77,8 @@ export function initializeCmsEditor({
     resolveImagePreviewUrl = null,
     confirmDiscard = null,
     hasSavedDraft = false,
+    revisionHistory = null,
+    workflowConfirmations = null,
     documentObject = document,
     windowObject = window,
 } = {}) {
@@ -135,6 +149,14 @@ export function initializeCmsEditor({
                 : undefined,
         );
 
+    const packageConfirmers =
+        createCmsWorkflowConfirmers({
+            configuration:
+                workflowConfirmations,
+            documentObject,
+            revertToSaved,
+        });
+
     const drawer =
         createCmsDrawer({
             documentObject,
@@ -169,6 +191,19 @@ export function initializeCmsEditor({
         );
     }
 
+    mountConfiguredRevisionHistory({
+        drawer,
+        options: revisionHistory,
+        documentObject,
+        windowObject,
+        onStatus(model) {
+            getCmsStatusSurface(shell).set(
+                "revision-history",
+                model,
+            );
+        },
+    });
+
     let drawerController = null;
 
     const shellController =
@@ -193,13 +228,19 @@ export function initializeCmsEditor({
             initialShowPreview:
                 showPreview,
             saveChanges,
-            confirmSave,
+            confirmSave:
+                confirmSave ??
+                packageConfirmers.confirmSave,
             saveSuccessMessage,
             revertToSaved,
-            confirmRevert,
+            confirmRevert:
+                confirmRevert ??
+                packageConfirmers.confirmRevert,
             revertChanges,
             revertSuccessMessage,
-            confirmPublish,
+            confirmPublish:
+                confirmPublish ??
+                packageConfirmers.confirmPublish,
             publishChanges,
             publishSuccessMessage,
             uploadImage,

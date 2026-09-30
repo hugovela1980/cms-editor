@@ -11,6 +11,11 @@ import {
     findCmsPreviewTarget,
 } from "./preview-target.js";
 
+import {
+    isSafeCmsPreviewAttribute,
+    isSafeCmsPreviewAttributeValue,
+} from "./preview-attributes.js";
+
 function applyValueToTarget({
     target,
     field,
@@ -22,16 +27,43 @@ function applyValueToTarget({
             ? ""
             : String(value);
 
+    const previewAttribute =
+        field.previewAttribute
+            ?.toLowerCase();
+
+    if (previewAttribute) {
+        if (
+            !isSafeCmsPreviewAttribute(previewAttribute) ||
+            !isSafeCmsPreviewAttributeValue(
+                previewAttribute,
+                normalizedValue,
+            )
+        ) {
+            return false;
+        }
+
+        target.setAttribute(
+            previewAttribute,
+            normalizedValue,
+        );
+
+        return true;
+    }
+
     if (
         field.type ===
             CMS_FIELD_TYPES.IMAGE
     ) {
+        if (!isSafeCmsPreviewAttributeValue("src", normalizedValue)) {
+            return false;
+        }
+
         target.setAttribute(
             "src",
             normalizedValue,
         );
 
-        return;
+        return true;
     }
 
     if (
@@ -40,15 +72,21 @@ function applyValueToTarget({
         field.type ===
             CMS_FIELD_TYPES.PAGE
     ) {
+        if (!isSafeCmsPreviewAttributeValue("href", normalizedValue)) {
+            return false;
+        }
+
         target.setAttribute(
             "href",
             normalizedValue,
         );
 
-        return;
+        return true;
     }
 
     target.textContent = normalizedValue;
+
+    return true;
 }
 
 export function applyCmsFieldPreview({
@@ -65,13 +103,11 @@ export function applyCmsFieldPreview({
         return false;
     }
 
-    applyValueToTarget({
+    return applyValueToTarget({
         target,
         field,
         value,
     });
-
-    return true;
 }
 
 export function restoreCmsSectionPreview({

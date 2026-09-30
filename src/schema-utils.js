@@ -3,6 +3,10 @@ import {
     CMS_SUPPORTED_FIELD_TYPES,
 } from "./field-types.js";
 
+import {
+    isSafeCmsPreviewAttribute,
+} from "./preview-attributes.js";
+
 function assertNonEmptyString(value, message) {
     if (
         typeof value !== "string" ||
@@ -161,6 +165,17 @@ export function assertValidCmsField(field, schemaId) {
         }
     }
 
+    if (
+        field.previewAttribute !== undefined &&
+        !isSafeCmsPreviewAttribute(
+            field.previewAttribute,
+        )
+    ) {
+        throw new Error(
+            `CMS field "${schemaId}.${field.key}" has unsafe or unsupported previewAttribute metadata.`,
+        );
+    }
+
     assertValidCmsOptions(
         field,
         schemaId,
@@ -186,6 +201,13 @@ export function assertValidCmsSchema(schema) {
         schema.label,
         `CMS schema "${schema.id}" requires a label.`,
     );
+
+    if (schema.itemNoun !== undefined) {
+        assertNonEmptyString(
+            schema.itemNoun,
+            `CMS schema "${schema.id}" has invalid itemNoun metadata.`,
+        );
+    }
 
     if (!Array.isArray(schema.fields) || schema.fields.length === 0) {
         throw new Error(

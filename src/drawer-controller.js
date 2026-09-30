@@ -43,6 +43,14 @@ import {
 } from "./preview-target.js";
 
 import {
+    scrollCmsPreviewTargetIntoView,
+} from "./preview-navigation.js";
+
+import {
+    installCmsPreviewNavigationEvents,
+} from "./preview-navigation-events.js";
+
+import {
     writeCmsPreviewPreference,
 } from "./preview-preference.js";
 
@@ -352,6 +360,12 @@ export function installCmsDrawerController(
     let saveConfirmationPending =
         false;
 
+    let publishConfirmationPending =
+        false;
+
+    let revertConfirmationPending =
+        false;
+
     const uploadedImagePaths = new Set();
     const supersededUploadedImagePaths = new Set();
 
@@ -361,6 +375,30 @@ export function installCmsDrawerController(
 
     const documentObject =
         drawer.ownerDocument;
+
+    function focusPreviewTarget(
+        sectionPath,
+        fieldKey,
+    ) {
+        const entry = findSectionEntry(
+            sectionEntries,
+            sectionPath,
+        );
+
+        if (!entry) {
+            return;
+        }
+
+        const target = highlightCmsField(
+            entry.section,
+            fieldKey,
+            documentObject,
+        );
+
+        scrollCmsPreviewTargetIntoView(
+            target,
+        );
+    }
 
     const storage =
         previewStorage ??
@@ -817,17 +855,24 @@ function getFirstValidationMessage() {
     publishButton?.addEventListener(
         "click",
         async () => {
-            if (workflow.isBusy()) {
+            if (workflow.isBusy() || publishConfirmationPending) {
                 return;
             }
 
             if (typeof confirmPublish === "function") {
+                publishConfirmationPending = true;
                 try {
                     const confirmed = await confirmPublish();
                     if (!confirmed) return;
                 } catch {
                     return;
+                } finally {
+                    publishConfirmationPending = false;
                 }
+            }
+
+            if (workflow.isBusy()) {
+                return;
             }
 
             workflow.send(
@@ -868,17 +913,24 @@ function getFirstValidationMessage() {
     revertButton.addEventListener(
         "click",
         async () => {
-            if (workflow.isBusy()) {
+            if (workflow.isBusy() || revertConfirmationPending) {
                 return;
             }
 
             if (typeof confirmRevert === "function") {
+                revertConfirmationPending = true;
                 try {
                     const confirmed = await confirmRevert();
                     if (!confirmed) return;
                 } catch {
                     return;
+                } finally {
+                    revertConfirmationPending = false;
                 }
+            }
+
+            if (workflow.isBusy()) {
+                return;
             }
 
             const previousDisabled = revertButton.disabled;
@@ -1019,28 +1071,18 @@ function getFirstValidationMessage() {
         );
 
     for (const control of controls) {
-        control.addEventListener(
-            "focus",
-            () => {
-                const entry =
-                    findSectionEntry(
-                        sectionEntries,
-                        control.dataset
-                            .cmsSectionPath,
-                    );
-
-                if (!entry) {
-                    return;
-                }
-
-                highlightCmsField(
-                    entry.section,
+        installCmsPreviewNavigationEvents({
+            control,
+            documentObject,
+            navigate() {
+                focusPreviewTarget(
+                    control.dataset
+                        .cmsSectionPath,
                     control.dataset
                         .cmsFieldKey,
-                    documentObject,
                 );
             },
-        );
+        });
 
         control.addEventListener(
             "blur",
@@ -1193,6 +1235,17 @@ function getFirstValidationMessage() {
             wrapper?.querySelector(
                 "[data-cms-image-status]",
             );
+
+        installCmsPreviewNavigationEvents({
+            control: fileInput,
+            documentObject,
+            navigate() {
+                focusPreviewTarget(
+                    sectionPath,
+                    fieldKey,
+                );
+            },
+        });
 
         if (typeof uploadImage !== "function") {
             fileInput.disabled = true;

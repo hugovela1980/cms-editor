@@ -24,6 +24,7 @@ assert.deepEqual(metadata.files, ["src/", "styles/", "README.md"]);
 assert.equal(metadata.dependencies, undefined);
 assert.equal(metadata.devDependencies, undefined);
 assert.equal(metadata.workspaces, undefined);
+assert.equal(metadata.scripts.verify, "npm test && npm run pack:check");
 
 for (const exportName of [
     "CMS_FIELD_TYPES",
