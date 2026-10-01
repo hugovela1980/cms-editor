@@ -11,6 +11,10 @@ import {
     scrollCmsPreviewTargetIntoView,
 } from "../src/preview-navigation.js";
 
+import {
+    installCmsDrawerController,
+} from "../src/drawer-controller.js";
+
 function previewSection(target) {
     return { querySelectorAll: () => [target] };
 }
@@ -152,5 +156,87 @@ assert.equal(scrollCmsPreviewTargetIntoView(
     scrollTarget(outsideRect, { connected: false }),
     { windowObject: viewport },
 ), false);
+
+
+{
+    const target = previewTarget("heading");
+    target.textContent = "Published heading";
+    const section = previewSection(target);
+    const control = {
+        dataset: {
+            cmsSectionPath: "hero",
+            cmsFieldKey: "heading",
+        },
+        value: "Saved draft heading",
+        addEventListener() {},
+        removeEventListener() {},
+    };
+    const button = () => ({
+        disabled: false,
+        addEventListener() {},
+        setAttribute() {},
+        removeAttribute() {},
+    });
+    const closeButton = button();
+    const previewToggle = { ...button(), checked: true };
+    const localSaveButton = button();
+    const revertButton = button();
+    const documentObject = {
+        activeElement: null,
+        defaultView: null,
+        querySelectorAll() { return []; },
+    };
+    const drawer = {
+        ownerDocument: documentObject,
+        addEventListener() {},
+        querySelector(selector) {
+            return {
+                "[data-cms-drawer-close]": closeButton,
+                "[data-cms-preview-toggle]": previewToggle,
+                "[data-cms-save-local]": localSaveButton,
+                "[data-cms-revert-live]": revertButton,
+                "[data-cms-save-deploy]": null,
+            }[selector] ?? null;
+        },
+        querySelectorAll(selector) {
+            if (selector === "[data-cms-field-key]") return [control];
+            return [];
+        },
+    };
+    const editorState = {
+        getPublishedContent() {
+            return { hero: { heading: "Published heading" } };
+        },
+    };
+    const workflow = {
+        isBusy() { return false; },
+        getSnapshot() { return { state: "idle" }; },
+        send() {},
+    };
+    installCmsDrawerController({
+        drawer,
+        sectionEntries: [{
+            sectionPath: "hero",
+            section,
+            schema: {
+                id: "hero",
+                label: "Hero",
+                fields: [{
+                    key: "heading",
+                    label: "Heading",
+                    type: CMS_FIELD_TYPES.TEXT,
+                }],
+            },
+        }],
+        editorState,
+        workflow,
+        initialShowPreview: true,
+    });
+    assert.equal(
+        target.textContent,
+        "Saved draft heading",
+        "Preview-on initialization should immediately apply the saved draft to the website preview.",
+    );
+}
 
 console.log("Preview behavior checks passed.");

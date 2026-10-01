@@ -1354,7 +1354,7 @@ function getFirstValidationMessage() {
                         onImageUploadStatus?.({
                             state: "uploaded",
                             message: "Unsaved changes",
-                            supporting: "Image uploaded. Save Draft to keep this replacement in the shared draft.",
+                            supporting: "Image uploaded. Save Draft to keep this replacement in the draft.",
                         });
 
                         if (status) status.textContent = "";
@@ -1630,7 +1630,7 @@ function getFirstValidationMessage() {
                 ? Boolean(hasSavedDraft())
                 : Boolean(hasSavedDraft);
         const message = savedDraftExists
-            ? "Discard your unsaved changes and restore the saved draft? The shared draft and published website will not change. This cannot be undone."
+            ? "Discard your unsaved changes and restore the saved draft? The draft and published website will not change. This cannot be undone."
             : "Discard your unsaved changes and restore the published website? Nothing will be saved or published. This cannot be undone.";
         const confirmed = typeof confirmDiscard === "function"
             ? await confirmDiscard({ hasSavedDraft: savedDraftExists, message })
@@ -1659,7 +1659,7 @@ function getFirstValidationMessage() {
         refreshChangedFieldState();
         // Discard is local-only. Return to the workflow's existing clean state
         // (Saved, Idle, or Published) instead of forcing Idle, which would
-        // incorrectly disable Publish when a saved shared draft still exists.
+        // incorrectly disable Publish when a saved draft still exists.
         workflow.send(CMS_EDITOR_EVENTS.FORM_CHANGED, { dirty: false });
         return true;
     }
@@ -1695,7 +1695,12 @@ function getFirstValidationMessage() {
         return true;
     }
 
-    if (!showPreview) {
+    if (showPreview) {
+        applyAllDrawerPreviews({
+            drawer,
+            sectionEntries,
+        });
+    } else {
         restoreAllPublishedPreviews({
             sectionEntries,
             editorState,

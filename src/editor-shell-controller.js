@@ -98,8 +98,8 @@ export function renderCmsEditorShell({
         : ({
             idle: 'Choose a field to begin editing.',
             dirty: 'These changes are only in this browser until you save.',
-            saving: 'Writing your changes to the shared draft.',
-            saved: 'Your latest changes are in the shared draft.',
+            saving: 'Writing your changes to the draft.',
+            saved: 'Your latest changes are in the draft.',
             build_pending: 'The preview is catching up with the saved draft.',
             publishing: snapshot.hasUnsavedChanges
                 ? 'Publishing continues in the background. New edits belong to your next draft.'

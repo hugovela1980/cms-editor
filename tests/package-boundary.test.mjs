@@ -91,6 +91,7 @@ const forbiddenFacts = [
     "NETLIFY_AUTH_TOKEN",
     "content/draft/",
     "content/published/",
+    "shared draft",
     ["Right", "Track"].join(" "),
 ];
 
