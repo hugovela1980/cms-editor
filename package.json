@@ -9,7 +9,7 @@
     "./styles/cms-editor.css": "./styles/cms-editor.css"
   },
   "scripts": {
-    "test": "node tests/package-boundary.test.mjs && node tests/preview-behavior.test.mjs && node tests/preview-navigation-events.test.mjs && node tests/section-labels.test.mjs && node tests/revision-integration.test.mjs && node tests/workflow-confirmation.test.mjs",
+    "test": "node tests/package-boundary.test.mjs && node tests/preview-behavior.test.mjs && node tests/preview-navigation-events.test.mjs && node tests/section-labels.test.mjs && node tests/revision-integration.test.mjs && node tests/revision-history.test.mjs && node tests/workflow-confirmation.test.mjs",
     "pack:check": "npm pack --dry-run",
     "verify": "npm test && npm run pack:check",
     "zip": "bash scripts/create-repo-zip.sh"

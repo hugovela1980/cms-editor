@@ -177,7 +177,7 @@ export function createRevisionHistory({
         body.append(eyebrow, title, date);
         appendRevisionContext({ documentObject, parent: body, revision });
         const scope = documentObject.createElement("p");
-        scope.textContent = "This is a saved version of your website from this point in time. Restoring it will replace the current draft for everyone working on the site. Your live website will not change until you publish, and your current draft note will be kept.";
+        scope.textContent = "This is a saved version of your website from this point in time. Restoring a revision replaces the current draft. The live website will not change until the draft is published.";
         body.append(scope);
         const valuesHeading = documentObject.createElement("h3");
         valuesHeading.textContent = "Website content";
@@ -205,7 +205,10 @@ export function createRevisionHistory({
         restore.type = "button";
         restore.className = "cms-save-confirmation__confirm";
         restore.textContent = "Restore to Draft";
-        actions.append(close, restore);
+        actions.append(close);
+        if (revision.current !== true) {
+            actions.append(restore);
+        }
         surface.append(body, feedback, actions);
         dialog.append(surface);
 
@@ -232,6 +235,10 @@ export function createRevisionHistory({
         });
         close.addEventListener("click", closeDialog);
         restore.addEventListener("click", async () => {
+            if (revision.current === true) {
+                return;
+            }
+
             if (isDraftDiverged()) {
                 feedback.textContent = "A newer version of the draft is available. Reload it before restoring this revision.";
                 feedback.setAttribute("role", "alert");
@@ -250,10 +257,10 @@ export function createRevisionHistory({
                 return;
             }
             const unpublishedWarning = hasUnpublishedDraft()
-                ? "This will replace the current draft with this historical revision. Any changes that have not been published will be overwritten and lost. The live website will not change; you will still need to publish this revision. Your draft note will be kept."
-                : "This will replace the current draft for everyone working on the site. The live website will not change until you publish, and your draft note will be kept.";
+                ? "This will replace the current draft with this revision. Any unpublished draft changes will be overwritten and lost. The live website will not change until the draft is published."
+                : "This will replace the current draft with this revision. The live website will not change until the draft is published.";
             const confirmed = windowObject.confirm(
-                `Restore this revision to the draft\n\n${unpublishedWarning}`,
+                `Restore this revision to the draft?\n\n${unpublishedWarning}`,
             );
             if (!confirmed) {
                 feedback.textContent = "Restore cancelled. This revision remains open for review.";
