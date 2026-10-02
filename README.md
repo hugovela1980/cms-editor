@@ -50,7 +50,7 @@ Fields continue to preview as text (`textContent`), links (`href`), or images (`
 }
 ```
 
-The supported attribute bindings are `alt`, `title`, `aria-label`, and `poster`. Event handlers, `style`, `srcdoc`, and other executable or markup-bearing targets are rejected during schema validation. Unsafe URL schemes are rejected at preview time. Values are applied with `setAttribute`; the editor never generates HTML from field values.
+The supported attribute bindings are `alt`, `title`, `aria-label`, and `poster`. Event handlers, `style`, `srcdoc`, and other executable or markup-bearing targets are rejected during schema validation. Unsafe URL schemes are rejected at preview time. Preview values are applied with DOM attribute APIs; the editor never generates HTML from field values. For the default image preview, a non-empty value sets `src`, while an absent optional value (`""`, `null`, or `undefined`) removes `src` instead of producing `src=""`. This lets a host keep an image target in the DOM without loading an empty source, and a later non-empty image value sets the attribute normally.
 
 The existing `data-cms-preview-field="alt"` target contract is unchanged. Focusing or clicking the corresponding editor control highlights that same target and scrolls the website preview only when the target is not comfortably visible. This navigation is independent of the Preview Changes toggle and respects reduced-motion preferences.
 

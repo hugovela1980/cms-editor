@@ -58,6 +58,11 @@ function applyValueToTarget({
             return false;
         }
 
+        if (normalizedValue === "") {
+            target.removeAttribute("src");
+            return true;
+        }
+
         target.setAttribute(
             "src",
             normalizedValue,

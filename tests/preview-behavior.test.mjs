@@ -25,6 +25,7 @@ function previewTarget(fieldKey = "value") {
         dataset: { cmsPreviewField: fieldKey },
         textContent: "original",
         setAttribute(name, value) { attributes.set(name, value); },
+        removeAttribute(name) { attributes.delete(name); },
         getAttribute(name) { return attributes.get(name) ?? null; },
     };
 }
@@ -40,6 +41,24 @@ for (const [type, attribute] of [
         value: "/safe-value",
     }), true);
     assert.equal(target.getAttribute(attribute), "/safe-value");
+}
+
+for (const absentValue of ["", null, undefined]) {
+    const target = previewTarget();
+    target.setAttribute("src", "/original.jpg");
+    assert.equal(applyCmsFieldPreview({
+        section: previewSection(target),
+        field: { key: "value", type: CMS_FIELD_TYPES.IMAGE },
+        value: absentValue,
+    }), true);
+    assert.equal(target.getAttribute("src"), null);
+
+    assert.equal(applyCmsFieldPreview({
+        section: previewSection(target),
+        field: { key: "value", type: CMS_FIELD_TYPES.IMAGE },
+        value: "/images/example.jpg",
+    }), true);
+    assert.equal(target.getAttribute("src"), "/images/example.jpg");
 }
 
 {
@@ -84,6 +103,25 @@ for (const attribute of ["alt", "title"]) {
         },
     });
     assert.equal(target.getAttribute("alt"), "Original description");
+}
+
+{
+    const target = previewTarget("image");
+    target.setAttribute("src", "/temporary.jpg");
+    restoreCmsSectionPreview({
+        section: previewSection(target),
+        sectionPath: "hero",
+        schema: {
+            fields: [{
+                key: "image",
+                type: CMS_FIELD_TYPES.IMAGE,
+            }],
+        },
+        siteContent: {
+            hero: { image: "" },
+        },
+    });
+    assert.equal(target.getAttribute("src"), null);
 }
 
 const schemaField = {
