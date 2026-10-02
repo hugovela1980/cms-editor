@@ -1,6 +1,7 @@
 // Display models only; the source controllers still own all workflow state.
 const surfaces = new WeakMap();
 let detailSequence = 0;
+let inlineDetailSequence = 0;
 
 export function showCmsStatusDetails({ documentObject, title, explanation, context = [], action = null }) {
     const opener = documentObject.activeElement;
@@ -52,26 +53,60 @@ export function getCmsStatusSurface(shell) {
     if (!shell) return { set() {} };
     if (surfaces.has(shell)) return surfaces.get(shell);
     const documentObject = shell.ownerDocument;
-    shell.innerHTML = `<div class="cms-status-strip" data-cms-status-strip>
-        <span class="cms-status-strip__spinner" data-cms-status-progress role="progressbar" aria-label="Operation in progress" hidden></span>
-        <div class="cms-status-strip__copy">
-            <p class="cms-editor-shell__feedback" data-cms-editor-feedback role="status" aria-live="polite" aria-atomic="true"></p>
-            <p class="cms-status-strip__supporting" data-cms-status-supporting hidden></p>
-        </div>
-        <div class="cms-status-strip__actions">
-            <button type="button" class="cms-status-link" data-cms-status-action hidden></button>
-            <button type="button" class="cms-status-link" data-cms-status-more hidden>See more…</button>
-        </div>
-    </div>`;
-    const message = shell.querySelector('[data-cms-editor-feedback]');
-    const progress = shell.querySelector('[data-cms-status-progress]');
-    const supporting = shell.querySelector('[data-cms-status-supporting]');
-    const action = shell.querySelector('[data-cms-status-action]');
-    const more = shell.querySelector('[data-cms-status-more]');
+    const strip = documentObject.createElement('div');
+    strip.className = 'cms-status-strip';
+    strip.dataset.cmsStatusStrip = '';
+    const progress = documentObject.createElement('span');
+    progress.className = 'cms-status-strip__spinner';
+    progress.dataset.cmsStatusProgress = '';
+    progress.setAttribute('role', 'progressbar');
+    progress.setAttribute('aria-label', 'Operation in progress');
+    progress.hidden = true;
+    const copy = documentObject.createElement('div');
+    copy.className = 'cms-status-strip__copy';
+    const message = documentObject.createElement('p');
+    message.className = 'cms-editor-shell__feedback';
+    message.dataset.cmsEditorFeedback = '';
+    message.setAttribute('role', 'status');
+    message.setAttribute('aria-live', 'polite');
+    message.setAttribute('aria-atomic', 'true');
+    const supporting = documentObject.createElement('p');
+    supporting.className = 'cms-status-strip__supporting';
+    supporting.dataset.cmsStatusSupporting = '';
+    supporting.hidden = true;
+    copy.append(message, supporting);
+    const actions = documentObject.createElement('div');
+    actions.className = 'cms-status-strip__actions';
+    const action = documentObject.createElement('button');
+    action.type = 'button';
+    action.className = 'cms-status-link';
+    action.dataset.cmsStatusAction = '';
+    action.hidden = true;
+    const more = documentObject.createElement('button');
+    more.type = 'button';
+    more.className = 'cms-status-link';
+    more.dataset.cmsStatusMore = '';
+    more.hidden = true;
+    more.textContent = 'See more…';
+    const inlineDetails = documentObject.createElement('div');
+    inlineDetails.id = `cms-status-inline-details-${++inlineDetailSequence}`;
+    inlineDetails.className = 'cms-status-strip__details';
+    inlineDetails.dataset.cmsStatusInlineDetails = '';
+    inlineDetails.setAttribute('aria-label', 'Publication progress');
+    inlineDetails.hidden = true;
+    const inlineList = documentObject.createElement('ol');
+    inlineList.className = 'cms-publication-progress';
+    inlineDetails.append(inlineList);
+    actions.append(action, more);
+    strip.append(progress, copy, actions, inlineDetails);
+    shell.replaceChildren(strip);
     const sources = new Map();
     let selected;
     let detailModel;
-    function details() {
+    let inlineDetailModel;
+    let inlineDetailId = null;
+    let inlineExpanded = false;
+    function showModalDetails() {
         if (!detailModel) return;
         const context = [...(detailModel.detail.context ?? [])];
         for (const model of sources.values()) {
@@ -80,8 +115,42 @@ export function getCmsStatusSurface(shell) {
         showCmsStatusDetails({ documentObject, ...detailModel.detail, context,
             action: detailModel.action ? { ...detailModel.action, label: detailModel.action.detailLabel ?? detailModel.action.label } : null });
     }
+    function renderInlineDetails() {
+        inlineList.replaceChildren();
+        for (const step of inlineDetailModel?.inlineDetails.steps ?? []) {
+            const item = documentObject.createElement('li');
+            item.className = 'cms-publication-progress__step';
+            item.dataset.cmsPublicationStage = step.stage;
+            item.dataset.cmsPublicationState = step.state;
+            item.setAttribute(
+                'aria-label',
+                `${step.label}: ${step.state === 'active' ? 'current' : step.state}`,
+            );
+            if (step.state === 'active') item.setAttribute('aria-current', 'step');
+            const marker = documentObject.createElement('span');
+            marker.className = 'cms-publication-progress__marker';
+            marker.setAttribute('aria-hidden', 'true');
+            marker.textContent = ({ completed: '✓', active: '●', pending: '○' })[step.state] ?? '○';
+            const label = documentObject.createElement('span');
+            label.textContent = step.label;
+            item.append(marker, label);
+            inlineList.append(item);
+        }
+        inlineDetails.hidden = !inlineExpanded || !inlineDetailModel;
+        more.textContent = inlineExpanded && inlineDetailModel ? 'Show less' : 'See more…';
+        more.setAttribute('aria-expanded', String(Boolean(inlineExpanded && inlineDetailModel)));
+        if (inlineDetailModel) more.setAttribute('aria-controls', inlineDetails.id);
+        else more.removeAttribute('aria-controls');
+    }
     action.addEventListener('click', () => selected?.action?.run());
-    more.addEventListener('click', details);
+    more.addEventListener('click', () => {
+        if (inlineDetailModel) {
+            inlineExpanded = !inlineExpanded;
+            renderInlineDetails();
+            return;
+        }
+        showModalDetails();
+    });
     const surface = {
         set(source, model) {
             if (model) sources.set(source, model);
@@ -89,6 +158,12 @@ export function getCmsStatusSurface(shell) {
             const ordered = [...sources.values()].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
             selected = ordered[0];
             detailModel = ordered.find(model => model.detail);
+            inlineDetailModel = selected?.inlineDetails ? selected : null;
+            const nextInlineDetailId = inlineDetailModel?.inlineDetails.id ?? null;
+            if (nextInlineDetailId !== inlineDetailId) {
+                inlineDetailId = nextInlineDetailId;
+                inlineExpanded = false;
+            }
             message.textContent = selected?.message ?? 'Ready';
             progress.hidden = !selected?.progress;
             shell.setAttribute('aria-busy', selected?.progress ? 'true' : 'false');
@@ -100,7 +175,8 @@ export function getCmsStatusSurface(shell) {
             message.setAttribute('aria-live', severity === 'error' ? 'assertive' : 'polite');
             action.hidden = !selected?.action;
             action.textContent = selected?.action?.label ?? '';
-            more.hidden = !detailModel;
+            more.hidden = !inlineDetailModel && !detailModel;
+            renderInlineDetails();
         },
     };
     surfaces.set(shell, surface);

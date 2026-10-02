@@ -119,6 +119,31 @@ Use `save: true` for confirmation without a note. `save.draftNoteLabel` can cust
 
 The legacy `confirmSave`, `confirmRevert`, and `confirmPublish` callbacks remain supported and take precedence over the corresponding package-owned dialog when both are supplied. Omitting `workflowConfirmations` preserves existing behavior.
 
+## Publication progress
+
+`publishChanges` may optionally report provider-neutral publication progress through the context passed by the editor:
+
+```js
+initializeCmsEditor({
+  requireSchema,
+  canPublish: true,
+  async publishChanges({ reportProgress }) {
+    reportProgress("creating-version");
+    await createWebsiteVersion();
+
+    reportProgress("updating-live");
+    await updateLiveWebsite();
+
+    reportProgress("confirming-live");
+    await confirmLiveWebsite();
+  },
+});
+```
+
+The complete lifecycle is `preparing`, `creating-version`, `updating-live`, `confirming-live`, and `confirmed`. The package exclusively owns `preparing` when publication starts and `confirmed` after `publishChanges` resolves. Hosts may report only `creating-version`, `updating-live`, and `confirming-live`; attempts to report package-owned, unknown, stale, or backward stages are safely rejected. Intermediate reporting is optional, and existing callbacks that ignore their argument continue to work.
+
+The host determines when its work reaches each host-reportable semantic stage. The editor owns the labels, inline See more/Show less presentation, accessibility, ordering, and stale-report protection. Hosts should report only these stage identifiers, never provider-specific text or HTML. Completed details remain inspectable until subsequent editor work begins; there is no timer-based dismissal.
+
 ## Verify locally
 
 ```bash

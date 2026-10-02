@@ -343,6 +343,7 @@ export function installCmsDrawerController(
         revertSuccessMessage = null,
         confirmPublish = null,
         publishChanges = null,
+        publicationProgress = null,
         publishSuccessMessage = null,
         uploadImage = null,
         onImageUploadStatus = null,
@@ -787,6 +788,8 @@ function getFirstValidationMessage() {
                 drawer,
             );
 
+            publicationProgress?.clearCompleted();
+
             workflow.send(
                 CMS_EDITOR_EVENTS
                     .SAVE_START,
@@ -882,10 +885,21 @@ function getFirstValidationMessage() {
                 },
             );
 
+            const publicationOperation =
+                publicationProgress?.start();
+
             try {
                 if (typeof publishChanges === "function") {
-                    await publishChanges();
+                    await publishChanges({
+                        reportProgress:
+                            publicationOperation?.reportProgress ??
+                            (() => false),
+                    });
                 }
+
+                publicationProgress?.succeed(
+                    publicationOperation,
+                );
 
                 workflow.send(
                     CMS_EDITOR_EVENTS.PUBLISH_SUCCESS,
@@ -896,6 +910,9 @@ function getFirstValidationMessage() {
                     },
                 );
             } catch (error) {
+                publicationProgress?.fail(
+                    publicationOperation,
+                );
                 workflow.send(
                     CMS_EDITOR_EVENTS.FAIL,
                     {
@@ -932,6 +949,8 @@ function getFirstValidationMessage() {
             if (workflow.isBusy()) {
                 return;
             }
+
+            publicationProgress?.clearCompleted();
 
             const previousDisabled = revertButton.disabled;
             revertButton.disabled = true;
@@ -1156,6 +1175,8 @@ function getFirstValidationMessage() {
                     return;
                 }
 
+                publicationProgress?.clearCompleted();
+
                 refreshChangedFieldState(
                     control,
                 );
@@ -1290,6 +1311,8 @@ function getFirstValidationMessage() {
                     fileInput.value = "";
                     return;
                 }
+
+                publicationProgress?.clearCompleted();
 
                 const previousValue = control.value;
                 const previousPreview =
@@ -1638,6 +1661,8 @@ function getFirstValidationMessage() {
 
         if (!confirmed) return false;
 
+        publicationProgress?.clearCompleted();
+
         clearCmsDrawerValidation(drawer);
         const restoredContent = savedDraftExists
             ? editorState.getSavedContent()
@@ -1671,6 +1696,8 @@ function getFirstValidationMessage() {
         ) {
             return false;
         }
+
+        publicationProgress?.clearCompleted();
 
         const reconciledContent = editorState.replaceSavedContent(content);
         clearCmsDrawerValidation(drawer);

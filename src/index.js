@@ -14,6 +14,7 @@ export * from "./field-types.js";
 export * from "./field-validation.js";
 export * from "./live-preview.js";
 export * from "./preview-preference.js";
+export { CMS_PUBLICATION_STAGES } from "./publication-progress.js";
 export * from "./preview-target.js";
 export * from "./schema-utils.js";
 export * from "./section-controls.js";

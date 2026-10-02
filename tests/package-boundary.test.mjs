@@ -27,6 +27,7 @@ assert.equal(metadata.workspaces, undefined);
 assert.equal(metadata.scripts.verify, "npm test && npm run pack:check");
 
 for (const exportName of [
+    "CMS_PUBLICATION_STAGES",
     "CMS_FIELD_TYPES",
     "assertValidCmsSchema",
     "createCmsSubmissionValidator",

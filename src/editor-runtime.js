@@ -31,6 +31,10 @@ import {
 } from "./preview-preference.js";
 
 import {
+    createCmsPublicationProgress,
+} from "./publication-progress.js";
+
+import {
     mountConfiguredRevisionHistory,
 } from "./revision-integration.js";
 
@@ -204,6 +208,12 @@ export function initializeCmsEditor({
         },
     });
 
+    const publicationProgress =
+        createCmsPublicationProgress({
+            statusSurface:
+                getCmsStatusSurface(shell),
+        });
+
     let drawerController = null;
 
     const shellController =
@@ -242,6 +252,7 @@ export function initializeCmsEditor({
                 confirmPublish ??
                 packageConfirmers.confirmPublish,
             publishChanges,
+            publicationProgress,
             publishSuccessMessage,
             uploadImage,
             onImageUploadStatus,
