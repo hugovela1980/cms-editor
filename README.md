@@ -54,6 +54,8 @@ The supported attribute bindings are `alt`, `title`, `aria-label`, and `poster`.
 
 The existing `data-cms-preview-field="alt"` target contract is unchanged. Focusing or clicking the corresponding editor control highlights that same target and scrolls the website preview only when the target is not comfortably visible. This navigation is independent of the Preview Changes toggle and respects reduced-motion preferences.
 
+Optional image fields let editors choose, replace, or remove the current image value. Removing an image is an ordinary draft edit: it clears the field through the normal change and preview flow, and the image can be restored or added again later. The package does not physically delete the underlying uploaded asset when a field is cleared; hosts remain responsible for reference-safe asset cleanup.
+
 ## Repeatable-item labels
 
 Sections whose content path ends in an array position, such as `services.cards.0`, receive stable structural labels. Set an optional schema `itemNoun` to choose the noun:

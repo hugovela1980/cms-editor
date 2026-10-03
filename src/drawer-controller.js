@@ -30,6 +30,10 @@ import {
     CMS_FIELD_TYPES,
 } from "./field-types.js";
 
+import {
+    clearCmsOptionalImageControl,
+} from "./field-control.js";
+
 
 import {
     applyCmsFieldPreview,
@@ -104,18 +108,36 @@ function syncImageControlDisplay(control) {
 
     const preview = wrapper.querySelector("[data-cms-image-preview]");
     const current = wrapper.querySelector("[data-cms-image-current]");
+    const uploadLabel = wrapper.querySelector("[data-cms-image-upload-label]");
+    const removeButton = wrapper.querySelector("[data-cms-image-remove]");
+    const hasImage = Boolean(control.value);
+    const previewValue =
+        control.dataset.cmsPreviewValue ||
+        control.value ||
+        "";
 
     if (preview) {
-        preview.src =
-            control.dataset.cmsPreviewValue ||
-            control.value ||
-            "";
+        if (previewValue) {
+            preview.src = previewValue;
+        } else {
+            preview.removeAttribute("src");
+        }
     }
 
     if (current) {
         current.textContent =
             control.value ||
             "No image selected";
+    }
+
+    if (uploadLabel) {
+        uploadLabel.textContent = hasImage
+            ? "Replace image"
+            : "Choose image";
+    }
+
+    if (removeButton) {
+        removeButton.hidden = !hasImage;
     }
 }
 
@@ -1177,6 +1199,10 @@ function getFirstValidationMessage() {
 
                 publicationProgress?.clearCompleted();
 
+                syncImageControlDisplay(
+                    control,
+                );
+
                 refreshChangedFieldState(
                     control,
                 );
@@ -1221,6 +1247,60 @@ function getFirstValidationMessage() {
                             field,
                         ),
                 });
+            },
+        );
+    }
+
+    const imageRemoveButtons =
+        drawer.querySelectorAll(
+            "[data-cms-image-remove]",
+        );
+
+    for (const removeButton of imageRemoveButtons) {
+        const wrapper =
+            removeButton.closest?.(
+                ".cms-field--image",
+            );
+        const control =
+            wrapper?.querySelector(
+                "[data-cms-field-key]",
+            );
+        const entry = control
+            ? findSectionEntry(
+                sectionEntries,
+                control.dataset.cmsSectionPath,
+            )
+            : null;
+        const field = entry && control
+            ? findField(
+                entry,
+                control.dataset.cmsFieldKey,
+            )
+            : null;
+
+        removeButton.addEventListener(
+            "click",
+            () => {
+                if (
+                    !control ||
+                    !field ||
+                    (workflow.isLocalEditingBusy?.() ?? workflow.isBusy())
+                ) {
+                    return;
+                }
+
+                const previousValue =
+                    control.value;
+
+                if (clearCmsOptionalImageControl({
+                    control,
+                    field,
+                    documentObject,
+                }) && uploadedImagePaths.has(previousValue)) {
+                    supersededUploadedImagePaths.add(
+                        previousValue,
+                    );
+                }
             },
         );
     }

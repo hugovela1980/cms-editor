@@ -796,7 +796,14 @@ textarea.cms-field__control {
     border: 0;
 }
 
-.cms-image-field__replace {
+.cms-image-field__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.cms-image-field__replace,
+.cms-image-field__remove {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -810,11 +817,21 @@ textarea.cms-field__control {
     cursor: pointer;
 }
 
-.cms-image-field__replace:hover {
+.cms-image-field__remove {
+    font: inherit;
+}
+
+.cms-image-field__replace:hover,
+.cms-image-field__remove:hover {
     background: #f1f5f9;
 }
 
-.cms-image-field__input:focus-visible + .cms-image-field__replace {
+.cms-image-field__input:focus-visible + .cms-image-field__actions .cms-image-field__replace {
+    outline: 3px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.cms-image-field__remove:focus-visible {
     outline: 3px solid #2563eb;
     outline-offset: 2px;
 }
@@ -824,7 +841,7 @@ textarea.cms-field__control {
     font-size: 0.75rem;
 }
 
-.cms-image-field__input:disabled + .cms-image-field__replace {
+.cms-image-field__input:disabled + .cms-image-field__actions .cms-image-field__replace {
     opacity: 0.55;
     cursor: not-allowed;
 }

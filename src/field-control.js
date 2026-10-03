@@ -134,7 +134,10 @@ function createImageFieldControl({
     preview.className = "cms-image-field__preview";
     preview.dataset.cmsImagePreview = "";
     preview.alt = `Current ${field.label}`;
-    preview.src = String(previewValue ?? value ?? "");
+    const initialPreviewValue = String(previewValue ?? value ?? "");
+    if (initialPreviewValue) {
+        preview.src = initialPreviewValue;
+    }
 
     const current = documentObject.createElement("p");
     current.className = "cms-image-field__current";
@@ -165,8 +168,24 @@ function createImageFieldControl({
 
     const uploadLabel = documentObject.createElement("label");
     uploadLabel.className = "cms-image-field__replace";
+    uploadLabel.dataset.cmsImageUploadLabel = "";
     uploadLabel.htmlFor = fileInputId;
     uploadLabel.textContent = value ? "Replace image" : "Choose image";
+
+    const actions = documentObject.createElement("div");
+    actions.className = "cms-image-field__actions";
+    actions.append(uploadLabel);
+
+    let removeButton = null;
+    if (field.required !== true) {
+        removeButton = documentObject.createElement("button");
+        removeButton.type = "button";
+        removeButton.className = "cms-image-field__remove";
+        removeButton.dataset.cmsImageRemove = "";
+        removeButton.textContent = "Remove image";
+        removeButton.hidden = !value;
+        actions.append(removeButton);
+    }
 
     const hint = documentObject.createElement("p");
     hint.className = "cms-image-field__hint";
@@ -192,7 +211,7 @@ function createImageFieldControl({
         preview,
         current,
         fileInput,
-        uploadLabel,
+        actions,
         hint,
         status,
     );
@@ -210,8 +229,40 @@ function createImageFieldControl({
         errorElement,
         fileInput,
         imagePreview: preview,
+        imageRemoveButton: removeButton,
+        imageUploadLabel: uploadLabel,
         imageStatus: status,
     };
+}
+
+export function clearCmsOptionalImageControl({
+    control,
+    field,
+    documentObject = document,
+}) {
+    if (
+        field?.type !== CMS_FIELD_TYPES.IMAGE ||
+        field.required === true ||
+        !control?.value
+    ) {
+        return false;
+    }
+
+    control.value = "";
+    delete control.dataset.cmsPreviewValue;
+
+    const EventConstructor =
+        documentObject.defaultView?.Event;
+    if (EventConstructor) {
+        control.dispatchEvent(
+            new EventConstructor(
+                "input",
+                { bubbles: true },
+            ),
+        );
+    }
+
+    return true;
 }
 
 export function createCmsFieldControl({
