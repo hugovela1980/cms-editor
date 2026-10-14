@@ -41,8 +41,16 @@ The consuming website owns its schemas, content, templates, authentication, auth
 
 Use `CMS_FIELD_TYPES.TEXT_LIST` for a field whose content value is an ordered array of strings. `minItems` is optional; `minItems: 1` keeps the final row from being removed and rejects a shorter submitted array. `required: true` also requires at least one item. `maxLength`, when provided, applies to each item. Empty in-progress rows remain in the array while editing. Hosts can apply domain rules such as nonblank or unique values during persistence; the package validates array shape and minimum length. Save callbacks receive the full array as the change value at the field path.
 
+Set the optional `addButtonLabel` on a text-list field to choose the Add button's visible text. It must be a nonblank string. Without it, the button reads `Add ${field.label} item` as before. The value is assigned as text, never interpreted as HTML.
+
 ```js
-const field = { key: "options", label: "Options", type: CMS_FIELD_TYPES.TEXT_LIST, minItems: 1 };
+const field = {
+  key: "options",
+  label: "Options",
+  type: CMS_FIELD_TYPES.TEXT_LIST,
+  minItems: 1,
+  addButtonLabel: "Add dropdown options",
+};
 
 initializeCmsEditor({
   requireSchema,

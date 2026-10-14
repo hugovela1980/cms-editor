@@ -15,7 +15,7 @@ export function createCmsTextListControl({ documentObject, schemaId, sectionPath
     const addButton = documentObject.createElement("button");
     addButton.type = "button";
     addButton.className = "cms-text-list__add";
-    addButton.textContent = `Add ${field.label} item`;
+    addButton.textContent = field.addButtonLabel ?? `Add ${field.label} item`;
     const errorElement = documentObject.createElement("p");
     errorElement.id = `${control.id}-error`;
     errorElement.className = "cms-field__error";

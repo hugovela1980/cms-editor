@@ -156,6 +156,18 @@ export function assertValidCmsField(field, schemaId) {
         );
     }
 
+    if (field.addButtonLabel !== undefined) {
+        if (field.type !== CMS_FIELD_TYPES.TEXT_LIST) {
+            throw new Error(
+                `CMS field "${schemaId}.${field.key}" only supports addButtonLabel for text lists.`,
+            );
+        }
+        assertNonEmptyString(
+            field.addButtonLabel,
+            `CMS field "${schemaId}.${field.key}" has invalid addButtonLabel metadata.`,
+        );
+    }
+
     if (field.group !== undefined) {
         assertNonEmptyString(
             field.group,
