@@ -17,6 +17,9 @@ export const CMS_VALIDATION_CODES = Object.freeze({
     MAX_LENGTH:
         "max_length",
 
+    MIN_ITEMS:
+        "min_items",
+
     INVALID_URL:
         "invalid_url",
 

@@ -17,6 +17,7 @@ import {
 import {
     collectCmsEditorValues,
     hasCmsEditorChanges,
+    normalizeComparableValue,
     syncCmsEditorChangedFields,
     syncCmsEditorControlChangeState,
 } from "./editor-changes.js";
@@ -155,6 +156,7 @@ function findField(
 function applyAllDrawerPreviews({
     drawer,
     sectionEntries,
+    renderTextListPreview = null,
 }) {
     const controls =
         drawer.querySelectorAll(
@@ -193,6 +195,7 @@ function applyAllDrawerPreviews({
                     control,
                     field,
                 ),
+            renderTextListPreview,
         });
     }
 }
@@ -200,6 +203,7 @@ function applyAllDrawerPreviews({
 function restoreAllSavedPreviews({
     sectionEntries,
     editorState,
+    renderTextListPreview = null,
 }) {
     const savedContent =
         editorState.getSavedContent();
@@ -217,6 +221,7 @@ function restoreAllSavedPreviews({
 
             siteContent:
                 savedContent,
+            renderTextListPreview,
         });
     }
 }
@@ -224,6 +229,7 @@ function restoreAllSavedPreviews({
 function restoreAllPublishedPreviews({
     sectionEntries,
     editorState,
+    renderTextListPreview = null,
 }) {
     const publishedContent =
         editorState.getPublishedContent();
@@ -234,6 +240,7 @@ function restoreAllPublishedPreviews({
             sectionPath: entry.sectionPath,
             schema: entry.schema,
             siteContent: publishedContent,
+            renderTextListPreview,
         });
     }
 }
@@ -281,13 +288,14 @@ function syncDrawerControlsFromContent({
                 fullPath,
             );
 
-        control.value =
-            value === null ||
+        const field = findField(entry, fieldKey);
+        control.value = field?.type === CMS_FIELD_TYPES.TEXT_LIST
+            ? (Array.isArray(value) ? value : [])
+            : value === null ||
                 value === undefined
                 ? ""
                 : String(value);
 
-        const field = findField(entry, fieldKey);
         if (field?.type === CMS_FIELD_TYPES.IMAGE) {
             const previewValue =
                 typeof resolveImagePreviewUrl === "function"
@@ -370,6 +378,7 @@ export function installCmsDrawerController(
         uploadImage = null,
         onImageUploadStatus = null,
         resolveImagePreviewUrl = null,
+        renderTextListPreview = null,
         confirmDiscard = null,
         hasSavedDraft = false,
     } = options;
@@ -556,12 +565,8 @@ export function installCmsDrawerController(
 }) {
     return validationEntries.filter(
         ({ path, value }) =>
-            String(value ?? "") !==
-            String(
-                editorState.getSavedValue(
-                    path,
-                ) ?? "",
-            ),
+            normalizeComparableValue(value) !==
+            normalizeComparableValue(editorState.getSavedValue(path)),
     );
 }
 
@@ -671,11 +676,13 @@ function getFirstValidationMessage() {
                 applyAllDrawerPreviews({
                     drawer,
                     sectionEntries,
+                    renderTextListPreview,
                 });
             } else {
                 restoreAllPublishedPreviews({
                     sectionEntries,
                     editorState,
+                    renderTextListPreview,
                 });
             }
         },
@@ -837,11 +844,13 @@ function getFirstValidationMessage() {
                     applyAllDrawerPreviews({
                         drawer,
                         sectionEntries,
+                        renderTextListPreview,
                     });
                 } else {
                     restoreAllPublishedPreviews({
                         sectionEntries,
                         editorState,
+                        renderTextListPreview,
                     });
                 }
 
@@ -1003,11 +1012,13 @@ function getFirstValidationMessage() {
                     restoreAllSavedPreviews({
                         sectionEntries,
                         editorState,
+                        renderTextListPreview,
                     });
                 } else {
                     restoreAllPublishedPreviews({
                         sectionEntries,
                         editorState,
+                        renderTextListPreview,
                     });
                 }
 
@@ -1115,6 +1126,7 @@ function getFirstValidationMessage() {
         installCmsPreviewNavigationEvents({
             control,
             documentObject,
+            focusEvent: control.classList?.contains("cms-text-list") ? "focusin" : "focus",
             navigate() {
                 focusPreviewTarget(
                     control.dataset
@@ -1126,8 +1138,10 @@ function getFirstValidationMessage() {
         });
 
         control.addEventListener(
-            "blur",
-            () => {
+            control.classList?.contains("cms-text-list") ? "focusout" : "blur",
+            (event) => {
+                if (control.classList?.contains("cms-text-list") &&
+                    event.relatedTarget && control.contains(event.relatedTarget)) return;
                 const validation =
                     refreshControlValidation({
                         control,
@@ -1240,6 +1254,7 @@ function getFirstValidationMessage() {
                         entry.section,
 
                     field,
+                    renderTextListPreview,
 
                     value:
                         getPreviewControlValue(
@@ -1690,11 +1705,13 @@ function getFirstValidationMessage() {
             applyAllDrawerPreviews({
                 drawer,
                 sectionEntries,
+                renderTextListPreview,
             });
         } else {
             restoreAllPublishedPreviews({
                 sectionEntries,
                 editorState,
+                renderTextListPreview,
             });
         }
 
@@ -1755,9 +1772,9 @@ function getFirstValidationMessage() {
         });
 
         if (showPreview) {
-            applyAllDrawerPreviews({ drawer, sectionEntries });
+            applyAllDrawerPreviews({ drawer, sectionEntries, renderTextListPreview });
         } else {
-            restoreAllPublishedPreviews({ sectionEntries, editorState });
+            restoreAllPublishedPreviews({ sectionEntries, editorState, renderTextListPreview });
         }
 
         onImageUploadStatus?.(null);
@@ -1789,9 +1806,9 @@ function getFirstValidationMessage() {
         });
 
         if (showPreview) {
-            applyAllDrawerPreviews({ drawer, sectionEntries });
+            applyAllDrawerPreviews({ drawer, sectionEntries, renderTextListPreview });
         } else {
-            restoreAllPublishedPreviews({ sectionEntries, editorState });
+            restoreAllPublishedPreviews({ sectionEntries, editorState, renderTextListPreview });
         }
 
         onImageUploadStatus?.(null);
@@ -1806,11 +1823,13 @@ function getFirstValidationMessage() {
         applyAllDrawerPreviews({
             drawer,
             sectionEntries,
+            renderTextListPreview,
         });
     } else {
         restoreAllPublishedPreviews({
             sectionEntries,
             editorState,
+            renderTextListPreview,
         });
     }
 
@@ -1832,7 +1851,7 @@ function getFirstValidationMessage() {
         setPublishedContent(content) {
             const snapshot = editorState.setPublishedContent(content);
             if (!showPreview) {
-                restoreAllPublishedPreviews({ sectionEntries, editorState });
+                restoreAllPublishedPreviews({ sectionEntries, editorState, renderTextListPreview });
             }
             return snapshot;
         },

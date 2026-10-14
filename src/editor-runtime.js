@@ -79,6 +79,7 @@ export function initializeCmsEditor({
     uploadImage = null,
     onImageUploadStatus = null,
     resolveImagePreviewUrl = null,
+    renderTextListPreview = null,
     confirmDiscard = null,
     hasSavedDraft = false,
     revisionHistory = null,
@@ -257,6 +258,7 @@ export function initializeCmsEditor({
             uploadImage,
             onImageUploadStatus,
             resolveImagePreviewUrl,
+            renderTextListPreview,
             confirmDiscard,
             hasSavedDraft,
         });

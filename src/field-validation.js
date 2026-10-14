@@ -173,6 +173,54 @@ export function validateCmsFieldValue({
 }) {
     const errors = [];
 
+    if (field.type === CMS_FIELD_TYPES.TEXT_LIST) {
+        const minimum = Math.max(field.minItems ?? 0, field.required === true ? 1 : 0);
+        if (value === undefined) {
+            if (minimum > 0) {
+                errors.push(createFieldError({
+                    code: CMS_VALIDATION_CODES.MIN_ITEMS,
+                    schemaId,
+                    field,
+                    message: `${field.label} must have at least ${minimum} item${minimum === 1 ? "" : "s"}.`,
+                    details: { minItems: minimum, actualItems: 0 },
+                }));
+            }
+            return createCmsValidationResult({ values: { value }, errors });
+        }
+        if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+            errors.push(createFieldError({
+                code: CMS_VALIDATION_CODES.INVALID_TYPE,
+                schemaId,
+                field,
+                message: `${field.label} must be a list of text values.`,
+            }));
+        } else {
+            if (value.length < minimum) {
+                errors.push(createFieldError({
+                    code: CMS_VALIDATION_CODES.MIN_ITEMS,
+                    schemaId,
+                    field,
+                    message: `${field.label} must have at least ${minimum} item${minimum === 1 ? "" : "s"}.`,
+                    details: { minItems: minimum, actualItems: value.length },
+                }));
+            }
+            if (Number.isInteger(field.maxLength)) {
+                value.forEach((item, index) => {
+                    if (item.length > field.maxLength) {
+                        errors.push(createFieldError({
+                            code: CMS_VALIDATION_CODES.MAX_LENGTH,
+                            schemaId,
+                            field,
+                            message: `${field.label} item ${index + 1} must be ${field.maxLength} characters or fewer.`,
+                            details: { index, maxLength: field.maxLength, actualLength: item.length },
+                        }));
+                    }
+                });
+            }
+        }
+        return createCmsValidationResult({ values: { value }, errors });
+    }
+
     if (
         value === undefined
     ) {

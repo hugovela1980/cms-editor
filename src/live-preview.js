@@ -98,6 +98,7 @@ export function applyCmsFieldPreview({
     section,
     field,
     value,
+    renderTextListPreview = null,
 }) {
     const target = findCmsPreviewTarget(
         section,
@@ -106,6 +107,14 @@ export function applyCmsFieldPreview({
 
     if (!target) {
         return false;
+    }
+
+    if (field.type === CMS_FIELD_TYPES.TEXT_LIST) {
+        const listValue = value === undefined || value === null ? [] : value;
+        if (!Array.isArray(listValue) || listValue.some((item) => typeof item !== "string") ||
+            typeof renderTextListPreview !== "function") return false;
+        renderTextListPreview({ section, target, field, value: [...listValue] });
+        return true;
     }
 
     return applyValueToTarget({
@@ -120,6 +129,7 @@ export function restoreCmsSectionPreview({
     sectionPath,
     schema,
     siteContent,
+    renderTextListPreview = null,
 }) {
     for (const field of schema.fields) {
         const fullPath = joinCmsContentPath(
@@ -137,6 +147,7 @@ export function restoreCmsSectionPreview({
             section,
             field,
             value: originalValue,
+            renderTextListPreview,
         });
     }
 }

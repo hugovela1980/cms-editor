@@ -234,6 +234,7 @@ export function createCmsDrawer({
                     } = createCmsFieldControl({
                         documentObject,
                         schemaId: schema.id,
+                        sectionPath,
                         field,
                         value,
                         previewValue,

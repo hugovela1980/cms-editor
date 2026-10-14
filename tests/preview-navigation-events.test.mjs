@@ -21,9 +21,9 @@ function createControl(documentObject) {
                 ),
             );
         },
-        dispatch(name) {
+        dispatch(name, target) {
             for (const listener of listeners.get(name) ?? []) {
-                listener({ type: name });
+                listener({ type: name, target });
             }
         },
     };
@@ -62,5 +62,27 @@ assert.equal(navigationCount, 3);
 control.dispatch("input");
 control.dispatch("change");
 assert.equal(navigationCount, 3);
+
+const group = createControl(documentObject);
+const row = {};
+group.contains = (element) => element === row;
+let groupNavigations = 0;
+installCmsPreviewNavigationEvents({
+    control: group,
+    documentObject,
+    focusEvent: "focusin",
+    navigate() { groupNavigations += 1; },
+});
+documentObject.activeElement = row;
+group.dispatch("pointerdown", row);
+group.dispatch("click");
+assert.equal(groupNavigations, 1, "Clicking an already focused list row navigates");
+const anotherRow = {};
+documentObject.activeElement = row;
+group.dispatch("pointerdown", anotherRow);
+documentObject.activeElement = anotherRow;
+group.dispatch("focusin");
+group.dispatch("click");
+assert.equal(groupNavigations, 2, "Moving focus to another row navigates once");
 
 console.log("Preview navigation event checks passed.");

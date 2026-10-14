@@ -1,6 +1,7 @@
 import {
     CMS_FIELD_TYPES,
 } from "./field-types.js";
+import { createCmsTextListControl } from "./text-list-control.js";
 
 function createPageSelect(
     documentObject,
@@ -268,11 +269,15 @@ export function clearCmsOptionalImageControl({
 export function createCmsFieldControl({
     documentObject = document,
     schemaId,
+    sectionPath,
     field,
     value,
     previewValue = value,
     index,
 }) {
+    if (field.type === CMS_FIELD_TYPES.TEXT_LIST) {
+        return createCmsTextListControl({ documentObject, schemaId, sectionPath, field, value, index });
+    }
     if (field.type === CMS_FIELD_TYPES.IMAGE) {
         return createImageFieldControl({
             documentObject,

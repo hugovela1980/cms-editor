@@ -37,6 +37,24 @@ The package is distributed as source ESM and CSS. It has no bundler or generated
 
 The consuming website owns its schemas, content, templates, authentication, authorization, session behavior, persistence, publication, image storage, and backend enforcement. Host operations are supplied to the editor through its existing callbacks; credentials and provider-specific code do not belong in this package.
 
+## Ordered text lists
+
+Use `CMS_FIELD_TYPES.TEXT_LIST` for a field whose content value is an ordered array of strings. `minItems` is optional; `minItems: 1` keeps the final row from being removed and rejects a shorter submitted array. `required: true` also requires at least one item. `maxLength`, when provided, applies to each item. Empty in-progress rows remain in the array while editing. Hosts can apply domain rules such as nonblank or unique values during persistence; the package validates array shape and minimum length. Save callbacks receive the full array as the change value at the field path.
+
+```js
+const field = { key: "options", label: "Options", type: CMS_FIELD_TYPES.TEXT_LIST, minItems: 1 };
+
+initializeCmsEditor({
+  requireSchema,
+  renderTextListPreview({ section, target, field, value }) {
+    // `value` is a fresh ordered string array. Render it using DOM APIs.
+    // `target` is the element marked with data-cms-preview-field="options".
+  },
+});
+```
+
+The optional `renderTextListPreview` callback is the live preview contract. The package calls it immediately when a list changes while Preview Changes is on, when preview is enabled, and when draft or published content is restored. It passes the section, marked target, field schema, and an array copy. A missing restored list is passed as `[]` so the host can clear stale options. The package does not turn the array into comma-separated text or inject HTML. A host that displays the values in a select, list, or another structure owns that DOM rendering. Without a callback or matching target, list preview is skipped; editing and saving still work.
+
 ## Field preview attributes
 
 Fields continue to preview as text (`textContent`), links (`href`), or images (`src`) by default. To preview a value into a different safe HTML attribute, add `previewAttribute` to the field schema:

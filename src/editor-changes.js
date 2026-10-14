@@ -2,9 +2,12 @@ import {
     joinCmsContentPath,
 } from "./content-path.js";
 
-function normalizeComparableValue(
+export function normalizeComparableValue(
     value,
 ) {
+    if (Array.isArray(value)) {
+        return JSON.stringify(value);
+    }
     if (
         value === null ||
         value === undefined
@@ -61,11 +64,7 @@ export function collectCmsEditorValues({
 
         values.push({
             path,
-
-            value:
-                normalizeComparableValue(
-                    control.value,
-                ),
+            value: Array.isArray(control.value) ? [...control.value] : normalizeComparableValue(control.value),
         });
     }
 
@@ -152,7 +151,7 @@ export function hasCmsEditorChanges({
         editingRoot,
     }).some(
         ({ path, value }) =>
-            value !==
+            normalizeComparableValue(value) !==
             normalizeComparableValue(
                 editorState.getSavedValue(
                     path,

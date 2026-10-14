@@ -2,12 +2,16 @@ export function installCmsPreviewNavigationEvents({
     control,
     navigate,
     documentObject = control.ownerDocument,
+    focusEvent = "focus",
 }) {
     let suppressNextPointerClick = false;
 
-    const onPointerDown = () => {
-        suppressNextPointerClick =
-            documentObject.activeElement !== control;
+    const onPointerDown = (event) => {
+        suppressNextPointerClick = event?.target
+            ? documentObject.activeElement !== event.target
+            : control.contains
+                ? !control.contains(documentObject.activeElement)
+                : documentObject.activeElement !== control;
     };
     const onFocus = () => {
         navigate();
@@ -22,12 +26,12 @@ export function installCmsPreviewNavigationEvents({
     };
 
     control.addEventListener("pointerdown", onPointerDown);
-    control.addEventListener("focus", onFocus);
+    control.addEventListener(focusEvent, onFocus);
     control.addEventListener("click", onClick);
 
     return () => {
         control.removeEventListener("pointerdown", onPointerDown);
-        control.removeEventListener("focus", onFocus);
+        control.removeEventListener(focusEvent, onFocus);
         control.removeEventListener("click", onClick);
     };
 }

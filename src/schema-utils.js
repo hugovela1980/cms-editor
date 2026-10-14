@@ -145,6 +145,17 @@ export function assertValidCmsField(field, schemaId) {
         );
     }
 
+    if (
+        field.minItems !== undefined &&
+        (field.type !== CMS_FIELD_TYPES.TEXT_LIST ||
+            !Number.isInteger(field.minItems) ||
+            field.minItems < 0)
+    ) {
+        throw new Error(
+            `CMS field "${schemaId}.${field.key}" has invalid minItems metadata.`,
+        );
+    }
+
     if (field.group !== undefined) {
         assertNonEmptyString(
             field.group,

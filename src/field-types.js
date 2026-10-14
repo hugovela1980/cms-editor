@@ -1,6 +1,7 @@
 export const CMS_FIELD_TYPES = Object.freeze({
     TEXT: "text",
     TEXTAREA: "textarea",
+    TEXT_LIST: "text_list",
     URL: "url",
     EMAIL: "email",
     PHONE: "phone",

@@ -211,7 +211,9 @@ export function renderCmsDrawerValidationErrors({
         typeof firstInvalidControl
             .focus === "function"
     ) {
-        firstInvalidControl.focus();
+        (firstInvalidControl.classList?.contains("cms-text-list")
+            ? firstInvalidControl.querySelector("input") ?? firstInvalidControl.querySelector("button")
+            : firstInvalidControl).focus();
     }
 
     return firstInvalidControl;

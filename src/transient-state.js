@@ -23,11 +23,9 @@ export function createCmsTransientStateSnapshot({
                         path:
                             entry.path,
 
-                        value:
-                            String(
-                                entry.value ??
-                                    "",
-                            ),
+                        value: Array.isArray(entry.value)
+                            ? [...entry.value]
+                            : String(entry.value ?? ""),
 
                         ...(typeof entry.previewValue === "string"
                             ? { previewValue: entry.previewValue }
@@ -64,8 +62,8 @@ export function isCmsTransientStateSnapshot(
             (entry) =>
                 typeof entry?.path ===
                     "string" &&
-                typeof entry?.value ===
-                    "string" &&
+                (typeof entry?.value === "string" ||
+                    (Array.isArray(entry?.value) && entry.value.every((item) => typeof item === "string"))) &&
                 (entry.previewValue === undefined ||
                     typeof entry.previewValue === "string"),
         ),
