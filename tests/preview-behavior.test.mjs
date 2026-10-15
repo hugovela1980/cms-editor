@@ -35,12 +35,15 @@ for (const [type, attribute] of [
     [CMS_FIELD_TYPES.IMAGE, "src"],
 ]) {
     const target = previewTarget();
+    let called = false;
     assert.equal(applyCmsFieldPreview({
         section: previewSection(target),
         field: { key: "value", type },
         value: "/safe-value",
+        renderFieldPreview() { called = true; return true; },
     }), true);
     assert.equal(target.getAttribute(attribute), "/safe-value");
+    assert.equal(called, false);
 }
 
 for (const absentValue of ["", null, undefined]) {
@@ -71,8 +74,57 @@ for (const absentValue of ["", null, undefined]) {
     assert.equal(target.textContent, "Updated text");
 }
 
+for (const type of [CMS_FIELD_TYPES.TEXT, CMS_FIELD_TYPES.TEXTAREA]) {
+    const target = previewTarget();
+    const section = previewSection(target);
+    const field = { key: "value", type };
+    const calls = [];
+    assert.equal(applyCmsFieldPreview({
+        section,
+        field,
+        value: "<heading> & text",
+        renderFieldPreview(event) {
+            calls.push(event);
+            target.textContent = `rendered: ${event.value}`;
+            return true;
+        },
+    }), true);
+    assert.deepEqual(calls, [{ section, target, field, value: "<heading> & text" }]);
+    assert.equal(target.textContent, "rendered: <heading> & text");
+
+    for (const result of [false, undefined, "true"]) {
+        target.textContent = "stale markup";
+        assert.equal(applyCmsFieldPreview({
+            section,
+            field,
+            value: "Plain text",
+            renderFieldPreview() { return result; },
+        }), true);
+        assert.equal(target.textContent, "Plain text");
+    }
+}
+
+{
+    const target = previewTarget("body");
+    const values = [];
+    restoreCmsSectionPreview({
+        section: previewSection(target),
+        sectionPath: "article",
+        schema: { fields: [{ key: "body", type: CMS_FIELD_TYPES.TEXTAREA }] },
+        siteContent: { article: {} },
+        renderFieldPreview({ value }) {
+            values.push(value);
+            target.textContent = value;
+            return true;
+        },
+    });
+    assert.deepEqual(values, [""]);
+    assert.equal(target.textContent, "");
+}
+
 for (const attribute of ["alt", "title"]) {
     const target = previewTarget();
+    let called = false;
     assert.equal(applyCmsFieldPreview({
         section: previewSection(target),
         field: {
@@ -81,8 +133,10 @@ for (const attribute of ["alt", "title"]) {
             previewAttribute: attribute,
         },
         value: "Accessible preview",
+        renderFieldPreview() { called = true; return true; },
     }), true);
     assert.equal(target.getAttribute(attribute), "Accessible preview");
+    assert.equal(called, false);
 }
 
 {
@@ -199,22 +253,28 @@ assert.equal(scrollCmsPreviewTargetIntoView(
 {
     const target = previewTarget("heading");
     target.textContent = "Published heading";
+    const previewValues = [];
     const section = previewSection(target);
+    const controlListeners = new Map();
     const control = {
         dataset: {
             cmsSectionPath: "hero",
             cmsFieldKey: "heading",
         },
         value: "Saved draft heading",
-        addEventListener() {},
+        addEventListener(name, listener) { controlListeners.set(name, listener); },
         removeEventListener() {},
     };
-    const button = () => ({
-        disabled: false,
-        addEventListener() {},
-        setAttribute() {},
-        removeAttribute() {},
-    });
+    const button = () => {
+        const listeners = new Map();
+        return {
+            disabled: false,
+            addEventListener(name, listener) { listeners.set(name, listener); },
+            dispatch(name) { listeners.get(name)?.(); },
+            setAttribute() {},
+            removeAttribute() {},
+        };
+    };
     const closeButton = button();
     const previewToggle = { ...button(), checked: true };
     const localSaveButton = button();
@@ -242,6 +302,9 @@ assert.equal(scrollCmsPreviewTargetIntoView(
         },
     };
     const editorState = {
+        getSavedValue(path) {
+            return path === "hero.heading" ? "Saved draft heading" : undefined;
+        },
         getPublishedContent() {
             return { hero: { heading: "Published heading" } };
         },
@@ -269,12 +332,27 @@ assert.equal(scrollCmsPreviewTargetIntoView(
         editorState,
         workflow,
         initialShowPreview: true,
+        renderFieldPreview({ value }) {
+            previewValues.push(value);
+            target.textContent = `rendered: ${value}`;
+            return true;
+        },
     });
     assert.equal(
         target.textContent,
-        "Saved draft heading",
-        "Preview-on initialization should immediately apply the saved draft to the website preview.",
+        "rendered: Saved draft heading",
+        "Preview-on initialization should immediately invoke the host renderer with the saved draft.",
     );
+    control.value = "Edited heading";
+    controlListeners.get("input")?.();
+    assert.equal(target.textContent, "rendered: Edited heading");
+    previewToggle.checked = false;
+    previewToggle.dispatch("change");
+    assert.equal(target.textContent, "rendered: Published heading");
+    previewToggle.checked = true;
+    previewToggle.dispatch("change");
+    assert.equal(target.textContent, "rendered: Edited heading");
+    assert.deepEqual(previewValues, ["Saved draft heading", "Edited heading", "Published heading", "Edited heading"]);
 }
 
 console.log("Preview behavior checks passed.");

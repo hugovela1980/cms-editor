@@ -17,9 +17,11 @@ import {
 } from "./preview-attributes.js";
 
 function applyValueToTarget({
+    section,
     target,
     field,
     value,
+    renderFieldPreview,
 }) {
     const normalizedValue =
         value === null ||
@@ -89,6 +91,20 @@ function applyValueToTarget({
         return true;
     }
 
+    if (
+        (field.type === CMS_FIELD_TYPES.TEXT ||
+            field.type === CMS_FIELD_TYPES.TEXTAREA) &&
+        typeof renderFieldPreview === "function" &&
+        renderFieldPreview({
+            section,
+            target,
+            field,
+            value: normalizedValue,
+        }) === true
+    ) {
+        return true;
+    }
+
     target.textContent = normalizedValue;
 
     return true;
@@ -99,6 +115,7 @@ export function applyCmsFieldPreview({
     field,
     value,
     renderTextListPreview = null,
+    renderFieldPreview = null,
 }) {
     const target = findCmsPreviewTarget(
         section,
@@ -118,9 +135,11 @@ export function applyCmsFieldPreview({
     }
 
     return applyValueToTarget({
+        section,
         target,
         field,
         value,
+        renderFieldPreview,
     });
 }
 
@@ -130,6 +149,7 @@ export function restoreCmsSectionPreview({
     schema,
     siteContent,
     renderTextListPreview = null,
+    renderFieldPreview = null,
 }) {
     for (const field of schema.fields) {
         const fullPath = joinCmsContentPath(
@@ -148,6 +168,7 @@ export function restoreCmsSectionPreview({
             field,
             value: originalValue,
             renderTextListPreview,
+            renderFieldPreview,
         });
     }
 }

@@ -157,6 +157,7 @@ function applyAllDrawerPreviews({
     drawer,
     sectionEntries,
     renderTextListPreview = null,
+    renderFieldPreview = null,
 }) {
     const controls =
         drawer.querySelectorAll(
@@ -196,6 +197,7 @@ function applyAllDrawerPreviews({
                     field,
                 ),
             renderTextListPreview,
+            renderFieldPreview,
         });
     }
 }
@@ -204,6 +206,7 @@ function restoreAllSavedPreviews({
     sectionEntries,
     editorState,
     renderTextListPreview = null,
+    renderFieldPreview = null,
 }) {
     const savedContent =
         editorState.getSavedContent();
@@ -222,6 +225,7 @@ function restoreAllSavedPreviews({
             siteContent:
                 savedContent,
             renderTextListPreview,
+            renderFieldPreview,
         });
     }
 }
@@ -230,6 +234,7 @@ function restoreAllPublishedPreviews({
     sectionEntries,
     editorState,
     renderTextListPreview = null,
+    renderFieldPreview = null,
 }) {
     const publishedContent =
         editorState.getPublishedContent();
@@ -241,6 +246,7 @@ function restoreAllPublishedPreviews({
             schema: entry.schema,
             siteContent: publishedContent,
             renderTextListPreview,
+            renderFieldPreview,
         });
     }
 }
@@ -379,6 +385,7 @@ export function installCmsDrawerController(
         onImageUploadStatus = null,
         resolveImagePreviewUrl = null,
         renderTextListPreview = null,
+        renderFieldPreview = null,
         confirmDiscard = null,
         hasSavedDraft = false,
     } = options;
@@ -677,12 +684,14 @@ function getFirstValidationMessage() {
                     drawer,
                     sectionEntries,
                     renderTextListPreview,
+                    renderFieldPreview,
                 });
             } else {
                 restoreAllPublishedPreviews({
                     sectionEntries,
                     editorState,
                     renderTextListPreview,
+                    renderFieldPreview,
                 });
             }
         },
@@ -845,12 +854,14 @@ function getFirstValidationMessage() {
                         drawer,
                         sectionEntries,
                         renderTextListPreview,
+                        renderFieldPreview,
                     });
                 } else {
                     restoreAllPublishedPreviews({
                         sectionEntries,
                         editorState,
                         renderTextListPreview,
+                        renderFieldPreview,
                     });
                 }
 
@@ -1013,12 +1024,14 @@ function getFirstValidationMessage() {
                         sectionEntries,
                         editorState,
                         renderTextListPreview,
+                        renderFieldPreview,
                     });
                 } else {
                     restoreAllPublishedPreviews({
                         sectionEntries,
                         editorState,
                         renderTextListPreview,
+                        renderFieldPreview,
                     });
                 }
 
@@ -1255,6 +1268,7 @@ function getFirstValidationMessage() {
 
                     field,
                     renderTextListPreview,
+                    renderFieldPreview,
 
                     value:
                         getPreviewControlValue(
@@ -1706,12 +1720,14 @@ function getFirstValidationMessage() {
                 drawer,
                 sectionEntries,
                 renderTextListPreview,
+                renderFieldPreview,
             });
         } else {
             restoreAllPublishedPreviews({
                 sectionEntries,
                 editorState,
                 renderTextListPreview,
+                renderFieldPreview,
             });
         }
 
@@ -1772,9 +1788,9 @@ function getFirstValidationMessage() {
         });
 
         if (showPreview) {
-            applyAllDrawerPreviews({ drawer, sectionEntries, renderTextListPreview });
+            applyAllDrawerPreviews({ drawer, sectionEntries, renderTextListPreview, renderFieldPreview });
         } else {
-            restoreAllPublishedPreviews({ sectionEntries, editorState, renderTextListPreview });
+            restoreAllPublishedPreviews({ sectionEntries, editorState, renderTextListPreview, renderFieldPreview });
         }
 
         onImageUploadStatus?.(null);
@@ -1806,9 +1822,9 @@ function getFirstValidationMessage() {
         });
 
         if (showPreview) {
-            applyAllDrawerPreviews({ drawer, sectionEntries, renderTextListPreview });
+            applyAllDrawerPreviews({ drawer, sectionEntries, renderTextListPreview, renderFieldPreview });
         } else {
-            restoreAllPublishedPreviews({ sectionEntries, editorState, renderTextListPreview });
+            restoreAllPublishedPreviews({ sectionEntries, editorState, renderTextListPreview, renderFieldPreview });
         }
 
         onImageUploadStatus?.(null);
@@ -1824,12 +1840,14 @@ function getFirstValidationMessage() {
             drawer,
             sectionEntries,
             renderTextListPreview,
+            renderFieldPreview,
         });
     } else {
         restoreAllPublishedPreviews({
             sectionEntries,
             editorState,
             renderTextListPreview,
+            renderFieldPreview,
         });
     }
 
@@ -1851,7 +1869,7 @@ function getFirstValidationMessage() {
         setPublishedContent(content) {
             const snapshot = editorState.setPublishedContent(content);
             if (!showPreview) {
-                restoreAllPublishedPreviews({ sectionEntries, editorState, renderTextListPreview });
+                restoreAllPublishedPreviews({ sectionEntries, editorState, renderTextListPreview, renderFieldPreview });
             }
             return snapshot;
         },

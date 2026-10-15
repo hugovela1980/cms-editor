@@ -63,6 +63,26 @@ initializeCmsEditor({
 
 The optional `renderTextListPreview` callback is the live preview contract. The package calls it immediately when a list changes while Preview Changes is on, when preview is enabled, and when draft or published content is restored. It passes the section, marked target, field schema, and an array copy. A missing restored list is passed as `[]` so the host can clear stale options. The package does not turn the array into comma-separated text or inject HTML. A host that displays the values in a select, list, or another structure owns that DOM rendering. Without a callback or matching target, list preview is skipped; editing and saving still work.
 
+## Custom text field preview
+
+Pass the optional `renderFieldPreview` callback to `initializeCmsEditor` when a host needs to display a `text` or `textarea` field as structured content:
+
+```js
+initializeCmsEditor({
+  requireSchema,
+  renderFieldPreview({ section, target, field, value }) {
+    if (field.key !== "articleBody") return false;
+    target.replaceChildren();
+    const paragraph = target.ownerDocument.createElement("p");
+    paragraph.textContent = value;
+    target.append(paragraph);
+    return true;
+  },
+});
+```
+
+The package calls this hook only for `text` and `textarea` fields without `previewAttribute`, using the same `data-cms-preview-field` target as ordinary preview. It passes the section, target, field schema, and a string value. An absent saved or published value is passed as `""` so the host can clear stale markup. Return exactly `true` when the host handled rendering; any other return value falls back to the existing `textContent` assignment. The hook runs for live edits, initial draft preview, preview toggles, and saved or published restoration. Build elements with DOM APIs and assign user text with `textContent`; the host owns the safety of any custom rendering. Link, image, attribute, and text-list previews keep their existing behavior.
+
 ## Field preview attributes
 
 Fields continue to preview as text (`textContent`), links (`href`), or images (`src`) by default. To preview a value into a different safe HTML attribute, add `previewAttribute` to the field schema:
