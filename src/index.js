@@ -4,6 +4,7 @@ export * from "./content-source.js";
 export * from "./drawer-builder.js";
 export * from "./drawer-controller.js";
 export * from "./drawer-validation.js";
+export * from "./document-verification-confirmation.js";
 export * from "./editor-changes.js";
 export * from "./editor-shell-controller.js";
 export * from "./editor-shell.js";

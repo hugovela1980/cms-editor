@@ -167,6 +167,65 @@ Use `save: true` for confirmation without a note. `save.draftNoteLabel` can cust
 
 The legacy `confirmSave`, `confirmRevert`, and `confirmPublish` callbacks remain supported and take precedence over the corresponding package-owned dialog when both are supplied. Omitting `workflowConfirmations` preserves existing behavior.
 
+### Manual document verification before Publish
+
+Hosts can call `showCmsDocumentVerificationConfirmation` from `confirmPublish` when their own comparison returns **Could not verify**. A **known content difference** must be blocked by the host without opening this dialog. The function requires `status: "could-not-verify"`; it rejects any other status.
+
+```js
+import {
+  cmsDocumentVersionsMatch,
+  showCmsDocumentVerificationConfirmation,
+} from "@hugovela/cms-editor";
+
+let approvedVersions = null;
+initializeCmsEditor({
+  requireSchema,
+  canPublish: true,
+  async confirmPublish() {
+    approvedVersions = null;
+    const check = await verifyDocuments(); // Host-owned comparison.
+    if (check.status === "content-difference") return false;
+    if (check.status === "verified") return true;
+    if (check.status !== "could-not-verify") return false;
+
+    const result = await showCmsDocumentVerificationConfirmation({
+      status: "could-not-verify",
+      title: "Review the related documents",
+      explanation: check.explanation,
+      webpage: {
+        label: "Webpage",
+        previewUrl: check.webpage.previewUrl,
+        versionId: check.webpage.versionId,
+      },
+      downloadable: {
+        label: "Downloadable document",
+        previewUrl: check.downloadable.previewUrl,
+        versionId: check.downloadable.versionId,
+      },
+      getCurrentVersions: () => loadCurrentDocumentVersions(),
+    });
+    if (!result.confirmed) return false;
+    approvedVersions = result.versions;
+    return true;
+  },
+  async publishChanges() {
+    if (approvedVersions) {
+      const current = await loadCurrentDocumentVersions();
+      if (!cmsDocumentVersionsMatch({
+        webpage: { versionId: approvedVersions.webpage },
+        downloadable: { versionId: approvedVersions.downloadable },
+      }, current)) throw new Error("A reviewed document changed. Review again before publishing.");
+      await recordManualConfirmation({ versions: approvedVersions }); // Add editor identity and time on the host.
+    }
+    await publishWithHostRules(); // Recheck versions atomically with the publish operation.
+  },
+});
+```
+
+Each document needs a nonblank stable `versionId` for the exact content shown and an HTTPS `previewUrl`. The modal displays the supplied labels and secure links, disables acknowledgement and Confirm if either preview is unavailable, and returns `{ confirmed, versions: { webpage, downloadable } }` on either outcome. `getCurrentVersions` is required and may be asynchronous; it returns `{ webpage: { versionId }, downloadable: { versionId } }`. The modal calls it at confirmation time and returns `confirmed: false` if either version changed. Escape and Cancel also return `confirmed: false`.
+
+The host must use the returned identifiers only for those exact versions, record the editor identity and time, and recheck both versions immediately before publication. The package does not persist confirmations, inspect document contents, or enforce publication rules. Because `confirmPublish` expects a boolean, return `result.confirmed` (after retaining `result.versions` if needed), not the result object.
+
 ## Publication progress
 
 `publishChanges` may optionally report provider-neutral publication progress through the context passed by the editor:
