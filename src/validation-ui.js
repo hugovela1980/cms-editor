@@ -10,6 +10,11 @@ function findControlErrorElement(
         ) ?? null;
 }
 
+function validationFocusTarget(control) {
+    return control.closest?.(".cms-field--file")
+        ?.querySelector("[data-cms-file-input]") ?? control;
+}
+
 function findControlSection(
     control,
 ) {
@@ -95,6 +100,11 @@ export function clearCmsControlValidation(
     control.removeAttribute(
         "aria-errormessage",
     );
+    const focusTarget = validationFocusTarget(control);
+    if (focusTarget !== control) {
+        focusTarget.removeAttribute("aria-invalid");
+        focusTarget.removeAttribute("aria-errormessage");
+    }
 
     const errorElement =
         findControlErrorElement(
@@ -142,6 +152,11 @@ export function showCmsControlValidationError(
         "aria-errormessage",
         errorElement.id,
     );
+    const focusTarget = validationFocusTarget(control);
+    if (focusTarget !== control) {
+        focusTarget.setAttribute("aria-invalid", "true");
+        focusTarget.setAttribute("aria-errormessage", errorElement.id);
+    }
 
     syncControlSectionErrorState(
         control,
@@ -213,7 +228,7 @@ export function renderCmsDrawerValidationErrors({
     ) {
         (firstInvalidControl.classList?.contains("cms-text-list")
             ? firstInvalidControl.querySelector("input") ?? firstInvalidControl.querySelector("button")
-            : firstInvalidControl).focus();
+            : validationFocusTarget(firstInvalidControl)).focus();
     }
 
     return firstInvalidControl;

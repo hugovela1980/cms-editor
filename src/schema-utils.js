@@ -103,6 +103,23 @@ function assertValidCmsImageOptions(
     }
 }
 
+function assertValidCmsFileOptions(field, schemaId) {
+    if (field.type !== CMS_FIELD_TYPES.FILE) return;
+    if (!Array.isArray(field.accept) || field.accept.length === 0 ||
+        field.accept.some((value) => typeof value !== "string" || !value.trim())) {
+        throw new Error(`CMS file field "${schemaId}.${field.key}" requires non-empty accept metadata.`);
+    }
+    if (!Number.isInteger(field.maxBytes) || field.maxBytes <= 0) {
+        throw new Error(`CMS file field "${schemaId}.${field.key}" requires a positive maxBytes value.`);
+    }
+    if (field.hint !== undefined) {
+        assertNonEmptyString(field.hint, `CMS file field "${schemaId}.${field.key}" has invalid hint metadata.`);
+    }
+    if (field.previewAttribute !== undefined) {
+        throw new Error(`CMS file field "${schemaId}.${field.key}" uses a preview hook instead of previewAttribute.`);
+    }
+}
+
 export function assertValidCmsField(field, schemaId) {
     if (!field || typeof field !== "object") {
         throw new Error(
@@ -208,6 +225,7 @@ export function assertValidCmsField(field, schemaId) {
         field,
         schemaId,
     );
+    assertValidCmsFileOptions(field, schemaId);
 }
 
 export function assertValidCmsSchema(schema) {

@@ -236,6 +236,70 @@ function createImageFieldControl({
     };
 }
 
+function createFileFieldControl({ documentObject, schemaId, field, value, index }) {
+    const wrapper = documentObject.createElement("div");
+    wrapper.className = "cms-field cms-field--file";
+    const controlId = ["cms", schemaId, String(index)].join("-");
+    const fileInputId = `${controlId}-file`;
+    const currentId = `${controlId}-current`;
+    const actionId = `${controlId}-action`;
+    const statusId = `${controlId}-status`;
+    const hintId = `${controlId}-hint`;
+    const errorId = `${controlId}-error`;
+
+    const label = documentObject.createElement("label");
+    label.className = "cms-field__label";
+    label.htmlFor = fileInputId;
+    label.textContent = field.label;
+
+    const control = documentObject.createElement("input");
+    control.type = "hidden";
+    control.id = controlId;
+    control.name = field.key;
+    control.className = "cms-field__control cms-file-field__value";
+    control.dataset.cmsFieldKey = field.key;
+    control.value = value == null ? "" : String(value);
+
+    const fileInput = documentObject.createElement("input");
+    fileInput.type = "file";
+    fileInput.id = fileInputId;
+    fileInput.className = "cms-file-field__input";
+    fileInput.dataset.cmsFileInput = "";
+    fileInput.dataset.cmsFileFieldKey = field.key;
+    fileInput.accept = field.accept.join(",");
+    fileInput.setAttribute("aria-describedby", `${currentId} ${actionId} ${hintId} ${statusId} ${errorId}`);
+    if (field.required === true) fileInput.setAttribute("aria-required", "true");
+
+    const action = documentObject.createElement("p");
+    action.className = "cms-file-field__action";
+    action.id = actionId;
+    action.dataset.cmsFileAction = "";
+    action.textContent = value ? "Replace file" : "Choose file";
+    const current = documentObject.createElement("p");
+    current.className = "cms-file-field__current";
+    current.id = currentId;
+    current.dataset.cmsFileCurrent = "";
+    current.textContent = value ? "Loading file details…" : "No file selected";
+    const hint = documentObject.createElement("p");
+    hint.id = hintId;
+    hint.className = "cms-file-field__hint";
+    hint.textContent = field.hint ?? `${field.accept.join(", ")}${readableBytes(field.maxBytes) ? ` · max ${readableBytes(field.maxBytes)}` : ""}`;
+    const status = documentObject.createElement("p");
+    status.id = statusId;
+    status.className = "cms-file-field__status";
+    status.dataset.cmsFileStatus = "";
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    const errorElement = documentObject.createElement("p");
+    errorElement.id = errorId;
+    errorElement.className = "cms-field__error";
+    errorElement.dataset.cmsFieldError = "";
+    errorElement.hidden = true;
+
+    wrapper.append(label, action, current, fileInput, hint, status, control, errorElement);
+    return { wrapper, control, fileInput, fileCurrent: current, fileAction: action, fileStatus: status, errorElement };
+}
+
 export function clearCmsOptionalImageControl({
     control,
     field,
@@ -287,6 +351,9 @@ export function createCmsFieldControl({
             previewValue,
             index,
         });
+    }
+    if (field.type === CMS_FIELD_TYPES.FILE) {
+        return createFileFieldControl({ documentObject, schemaId, field, value, index });
     }
 
     const wrapper =

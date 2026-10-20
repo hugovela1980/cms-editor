@@ -68,6 +68,7 @@ export function renderCmsEditorShell({
             snapshot.state,
         );
     const localEditingBusy = busy && snapshot.state !== CMS_EDITOR_STATES.PUBLISHING;
+    const fileUploadPending = editingRoot.dataset.cmsFileUploadsPending === "true";
 
     const sharedLocked =
         typeof sharedStateLocked === "function"
@@ -144,6 +145,10 @@ export function renderCmsEditorShell({
         );
     }
 
+    for (const fileInput of editingRoot.querySelectorAll("[data-cms-file-input]")) {
+        setDisabled(fileInput, busy || sharedLocked || fileInput.dataset.cmsFileUploading === "true" || fileInput.dataset.cmsFileUnavailable === "true");
+    }
+
     setDisabled(
         editingRoot.querySelector(
             "[data-cms-preview-toggle]",
@@ -166,6 +171,7 @@ export function renderCmsEditorShell({
     setDisabled(
         localSave,
         busy ||
+            fileUploadPending ||
             sharedLocked ||
             !snapshot.hasUnsavedChanges ||
             hasValidationErrors,
@@ -175,7 +181,7 @@ export function renderCmsEditorShell({
         editingRoot.querySelector(
             "[data-cms-revert-live]",
         ),
-        busy || sharedLocked,
+        busy || fileUploadPending || sharedLocked,
     );
 
     const deploy =
@@ -197,6 +203,7 @@ export function renderCmsEditorShell({
     setDisabled(
         deploy,
         !publishAllowed ||
+            fileUploadPending ||
             busy ||
             sharedLocked ||
             !publishableState,

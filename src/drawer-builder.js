@@ -6,6 +6,7 @@ import {
 import {
     createCmsFieldControl,
 } from "./field-control.js";
+import { CMS_FIELD_TYPES } from "./field-types.js";
 
 import {
     createCmsEditorShell,
@@ -219,7 +220,7 @@ export function createCmsDrawer({
                         );
 
                     const previewValue =
-                        typeof resolveImagePreviewUrl === "function"
+                        field.type === CMS_FIELD_TYPES.IMAGE && typeof resolveImagePreviewUrl === "function"
                             ? resolveImagePreviewUrl({
                                 sectionPath,
                                 field,

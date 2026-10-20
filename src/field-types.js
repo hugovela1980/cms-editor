@@ -7,6 +7,7 @@ export const CMS_FIELD_TYPES = Object.freeze({
     PHONE: "phone",
     PAGE: "page",
     IMAGE: "image",
+    FILE: "file",
 });
 
 export const CMS_SUPPORTED_FIELD_TYPES = Object.freeze(

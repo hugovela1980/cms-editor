@@ -435,6 +435,10 @@ export function validateCmsFieldValue({
             }
             break;
 
+        case CMS_FIELD_TYPES.FILE:
+            // The reference is opaque to the package. The host validates ownership.
+            break;
+
         case CMS_FIELD_TYPES.PHONE:
             if (
                 !isValidCmsPhone(

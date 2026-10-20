@@ -11,6 +11,7 @@ export * from "./editor-shell.js";
 export * from "./editor-state.js";
 export * from "./editor-workflow.js";
 export * from "./field-control.js";
+export * from "./file-reference.js";
 export * from "./field-types.js";
 export * from "./field-validation.js";
 export * from "./live-preview.js";

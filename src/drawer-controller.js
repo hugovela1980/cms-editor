@@ -34,6 +34,7 @@ import {
 import {
     clearCmsOptionalImageControl,
 } from "./field-control.js";
+import { acceptsCmsFile, normalizeCmsFileMetadata } from "./file-reference.js";
 
 
 import {
@@ -142,6 +143,17 @@ function syncImageControlDisplay(control) {
     }
 }
 
+function syncFileControlDisplay(control, metadata = null) {
+    const wrapper = control.closest?.(".cms-field--file");
+    if (!wrapper) return;
+    const current = wrapper.querySelector("[data-cms-file-current]");
+    const action = wrapper.querySelector("[data-cms-file-action]");
+    if (current) current.textContent = control.value
+        ? metadata?.name || "File selected"
+        : "No file selected";
+    if (action) action.textContent = control.value ? "Replace file" : "Choose file";
+}
+
 function findField(
     entry,
     fieldKey,
@@ -158,6 +170,8 @@ function applyAllDrawerPreviews({
     sectionEntries,
     renderTextListPreview = null,
     renderFieldPreview = null,
+    renderFilePreview = null,
+    getFileMetadata = null,
 }) {
     const controls =
         drawer.querySelectorAll(
@@ -198,6 +212,10 @@ function applyAllDrawerPreviews({
                 ),
             renderTextListPreview,
             renderFieldPreview,
+            renderFilePreview,
+            previewUrl: field.type === CMS_FIELD_TYPES.FILE
+                ? getFileMetadata?.(control)?.previewUrl ?? null
+                : null,
         });
     }
 }
@@ -207,6 +225,8 @@ function restoreAllSavedPreviews({
     editorState,
     renderTextListPreview = null,
     renderFieldPreview = null,
+    renderFilePreview = null,
+    resolveFileReference = null,
 }) {
     const savedContent =
         editorState.getSavedContent();
@@ -226,6 +246,8 @@ function restoreAllSavedPreviews({
                 savedContent,
             renderTextListPreview,
             renderFieldPreview,
+            renderFilePreview,
+            resolveFileReference,
         });
     }
 }
@@ -235,6 +257,8 @@ function restoreAllPublishedPreviews({
     editorState,
     renderTextListPreview = null,
     renderFieldPreview = null,
+    renderFilePreview = null,
+    resolveFileReference = null,
 }) {
     const publishedContent =
         editorState.getPublishedContent();
@@ -247,6 +271,8 @@ function restoreAllPublishedPreviews({
             siteContent: publishedContent,
             renderTextListPreview,
             renderFieldPreview,
+            renderFilePreview,
+            resolveFileReference,
         });
     }
 }
@@ -256,6 +282,7 @@ function syncDrawerControlsFromContent({
     sectionEntries,
     content,
     resolveImagePreviewUrl = null,
+    onFileRestored = null,
 }) {
     const controls =
         drawer.querySelectorAll(
@@ -319,6 +346,8 @@ function syncDrawerControlsFromContent({
                 delete control.dataset.cmsPreviewValue;
             }
             syncImageControlDisplay(control);
+        } else if (field?.type === CMS_FIELD_TYPES.FILE) {
+            onFileRestored?.({ control, sectionPath, field, value: control.value, schemaId: entry.schema.id });
         }
     }
 }
@@ -382,6 +411,9 @@ export function installCmsDrawerController(
         publicationProgress = null,
         publishSuccessMessage = null,
         uploadImage = null,
+        uploadFile = null,
+        resolveFileReference = null,
+        renderFilePreview = null,
         onImageUploadStatus = null,
         resolveImagePreviewUrl = null,
         renderTextListPreview = null,
@@ -407,6 +439,9 @@ export function installCmsDrawerController(
 
     const uploadedImagePaths = new Set();
     const supersededUploadedImagePaths = new Set();
+    const fileMetadata = new WeakMap();
+    const fileGeneration = new WeakMap();
+    const pendingFileUploads = new Set();
 
     /** @type {HTMLElement | null} */
     let openTrigger =
@@ -414,6 +449,51 @@ export function installCmsDrawerController(
 
     const documentObject =
         drawer.ownerDocument;
+
+    function getFileMetadata(control) {
+        const metadata = fileMetadata.get(control);
+        return metadata?.value === control.value ? metadata : null;
+    }
+
+    function bumpFileGeneration(control) {
+        const next = (fileGeneration.get(control) ?? 0) + 1;
+        fileGeneration.set(control, next);
+        return next;
+    }
+
+    function resolveFileControl({ control, sectionPath, schemaId, field, value }) {
+        const generation = bumpFileGeneration(control);
+        fileMetadata.delete(control);
+        syncFileControlDisplay(control);
+        const status = control.closest?.(".cms-field--file")
+            ?.querySelector("[data-cms-file-status]");
+        if (status) {
+            status.textContent = "";
+            status.setAttribute("role", "status");
+        }
+        if (!value || typeof resolveFileReference !== "function") return;
+        Promise.resolve().then(() => resolveFileReference({
+            sectionPath, schemaId, fieldKey: field.key, value,
+        })).then((result) => {
+            if (fileGeneration.get(control) !== generation || control.value !== value) return;
+            const metadata = normalizeCmsFileMetadata(result);
+            fileMetadata.set(control, { value, ...metadata });
+            syncFileControlDisplay(control, metadata);
+            if (showPreview) {
+                const entry = findSectionEntry(sectionEntries, sectionPath);
+                if (entry) applyCmsFieldPreview({
+                    section: entry.section, field, value,
+                    previewUrl: metadata?.previewUrl ?? null, renderFilePreview,
+                });
+            }
+        }).catch(() => {
+            if (fileGeneration.get(control) !== generation || control.value !== value) return;
+            if (status) {
+                status.textContent = "File details could not be loaded.";
+                status.setAttribute("role", "alert");
+            }
+        });
+    }
 
     function focusPreviewTarget(
         sectionPath,
@@ -685,6 +765,9 @@ function getFirstValidationMessage() {
                     sectionEntries,
                     renderTextListPreview,
                     renderFieldPreview,
+                    renderFilePreview,
+                    getFileMetadata,
+                    resolveFileReference,
                 });
             } else {
                 restoreAllPublishedPreviews({
@@ -692,6 +775,8 @@ function getFirstValidationMessage() {
                     editorState,
                     renderTextListPreview,
                     renderFieldPreview,
+                    renderFilePreview,
+                    resolveFileReference,
                 });
             }
         },
@@ -700,7 +785,7 @@ function getFirstValidationMessage() {
     localSaveButton.addEventListener(
         "click",
         async () => {
-            if (workflow.isBusy() || saveConfirmationPending) {
+            if (workflow.isBusy() || saveConfirmationPending || pendingFileUploads.size) {
                 return;
             }
 
@@ -855,6 +940,8 @@ function getFirstValidationMessage() {
                         sectionEntries,
                         renderTextListPreview,
                         renderFieldPreview,
+                        renderFilePreview,
+                        getFileMetadata,
                     });
                 } else {
                     restoreAllPublishedPreviews({
@@ -862,6 +949,8 @@ function getFirstValidationMessage() {
                         editorState,
                         renderTextListPreview,
                         renderFieldPreview,
+                        renderFilePreview,
+                        resolveFileReference,
                     });
                 }
 
@@ -900,7 +989,7 @@ function getFirstValidationMessage() {
     publishButton?.addEventListener(
         "click",
         async () => {
-            if (workflow.isBusy() || publishConfirmationPending) {
+            if (workflow.isBusy() || publishConfirmationPending || pendingFileUploads.size) {
                 return;
             }
 
@@ -972,7 +1061,7 @@ function getFirstValidationMessage() {
     revertButton.addEventListener(
         "click",
         async () => {
-            if (workflow.isBusy() || revertConfirmationPending) {
+            if (workflow.isBusy() || revertConfirmationPending || pendingFileUploads.size) {
                 return;
             }
 
@@ -1017,6 +1106,7 @@ function getFirstValidationMessage() {
                     content:
                         revertedContent,
                     resolveImagePreviewUrl,
+                    onFileRestored: resolveFileControl,
                 });
 
                 if (showPreview) {
@@ -1025,6 +1115,8 @@ function getFirstValidationMessage() {
                         editorState,
                         renderTextListPreview,
                         renderFieldPreview,
+                        renderFilePreview,
+                        resolveFileReference,
                     });
                 } else {
                     restoreAllPublishedPreviews({
@@ -1032,6 +1124,8 @@ function getFirstValidationMessage() {
                         editorState,
                         renderTextListPreview,
                         renderFieldPreview,
+                        renderFilePreview,
+                        resolveFileReference,
                     });
                 }
 
@@ -1136,6 +1230,14 @@ function getFirstValidationMessage() {
         );
 
     for (const control of controls) {
+        const entry = findSectionEntry(sectionEntries, control.dataset.cmsSectionPath);
+        const field = entry && findField(entry, control.dataset.cmsFieldKey);
+        if (field?.type === CMS_FIELD_TYPES.FILE) {
+            resolveFileControl({
+                control, sectionPath: entry.sectionPath, schemaId: entry.schema.id,
+                field, value: control.value,
+            });
+        }
         installCmsPreviewNavigationEvents({
             control,
             documentObject,
@@ -1269,6 +1371,10 @@ function getFirstValidationMessage() {
                     field,
                     renderTextListPreview,
                     renderFieldPreview,
+                    renderFilePreview,
+                    previewUrl: field.type === CMS_FIELD_TYPES.FILE
+                        ? getFileMetadata(control)?.previewUrl ?? null
+                        : null,
 
                     value:
                         getPreviewControlValue(
@@ -1536,6 +1642,103 @@ function getFirstValidationMessage() {
         );
     }
 
+    const fileInputs = drawer.querySelectorAll("[data-cms-file-input]");
+    for (const fileInput of fileInputs) {
+        const sectionPath = fileInput.dataset.cmsSectionPath;
+        const fieldKey = fileInput.dataset.cmsFileFieldKey;
+        const entry = findSectionEntry(sectionEntries, sectionPath);
+        const field = entry && findField(entry, fieldKey);
+        const control = Array.from(controls).find((candidate) =>
+            candidate.dataset.cmsSectionPath === sectionPath &&
+            candidate.dataset.cmsFieldKey === fieldKey);
+        const status = fileInput.closest?.(".cms-field--file")
+            ?.querySelector("[data-cms-file-status]");
+        installCmsPreviewNavigationEvents({
+            control: fileInput, documentObject,
+            navigate() { focusPreviewTarget(sectionPath, fieldKey); },
+        });
+        if (!field || !control || typeof uploadFile !== "function") {
+            fileInput.disabled = true;
+            fileInput.dataset.cmsFileUnavailable = "true";
+            if (status) status.textContent = "File upload is unavailable.";
+            continue;
+        }
+        fileInput.addEventListener("change", async () => {
+            const file = fileInput.files?.[0];
+            if (!file || workflow.isBusy() || pendingFileUploads.has(control)) {
+                fileInput.value = "";
+                return;
+            }
+            if (!acceptsCmsFile(file, field.accept)) {
+                if (status) {
+                    status.textContent = "Choose an accepted file type.";
+                    status.setAttribute("role", "alert");
+                }
+                fileInput.value = "";
+                return;
+            }
+            if (file.size > field.maxBytes) {
+                if (status) {
+                    status.textContent = "That file is larger than the allowed upload size.";
+                    status.setAttribute("role", "alert");
+                }
+                fileInput.value = "";
+                return;
+            }
+            const previousValue = control.value;
+            const generation = bumpFileGeneration(control);
+            pendingFileUploads.add(control);
+            drawer.dataset.cmsFileUploadsPending = "true";
+            fileInput.disabled = true;
+            fileInput.dataset.cmsFileUploading = "true";
+            for (const button of [localSaveButton, publishButton, revertButton]) {
+                if (button) button.disabled = true;
+            }
+            if (status) {
+                status.textContent = "Uploading file…";
+                status.setAttribute("role", "status");
+            }
+            try {
+                const result = await uploadFile({
+                    sectionPath, schemaId: entry.schema.id, fieldKey, file,
+                });
+                if (fileGeneration.get(control) !== generation || control.value !== previousValue) return;
+                if (!result || typeof result.value !== "string" || !result.value.trim() ||
+                    typeof result.name !== "string" || !result.name.trim()) {
+                    throw new Error("The upload did not return a file reference and name.");
+                }
+                control.value = result.value;
+                const metadata = normalizeCmsFileMetadata(result);
+                fileMetadata.set(control, { value: result.value, ...metadata });
+                syncFileControlDisplay(control, metadata);
+                if (status) status.textContent = "File uploaded. Save Draft to keep this replacement.";
+                const EventConstructor = documentObject.defaultView?.Event;
+                if (EventConstructor) control.dispatchEvent(new EventConstructor("input", { bubbles: true }));
+                for (const button of [localSaveButton, publishButton, revertButton]) {
+                    if (button) button.disabled = true;
+                }
+            } catch (error) {
+                if (fileGeneration.get(control) === generation && control.value === previousValue) {
+                    if (status) {
+                        status.textContent = error instanceof Error
+                            ? `File upload failed: ${error.message}`
+                            : "File upload failed. The current file was kept.";
+                        status.setAttribute("role", "alert");
+                    }
+                }
+            } finally {
+                pendingFileUploads.delete(control);
+                fileInput.value = "";
+                fileInput.disabled = false;
+                delete fileInput.dataset.cmsFileUploading;
+                if (pendingFileUploads.size === 0) {
+                    delete drawer.dataset.cmsFileUploadsPending;
+                    updateWorkflowDirtyState({ allowErrorExit: true });
+                }
+            }
+        });
+    }
+
     /**
      * @param {string} sectionPath
      * @param {HTMLElement | null} [trigger]
@@ -1697,6 +1900,11 @@ function getFirstValidationMessage() {
                 control.dataset.cmsPreviewValue = restored.previewValue;
             }
             syncImageControlDisplay(control);
+            const entry = findSectionEntry(sectionEntries, sectionPath);
+            const field = entry && findField(entry, fieldKey);
+            if (field?.type === CMS_FIELD_TYPES.FILE) {
+                resolveFileControl({ control, sectionPath, schemaId: entry.schema.id, field, value: control.value });
+            }
         }
 
         clearCmsDrawerValidation(
@@ -1721,6 +1929,8 @@ function getFirstValidationMessage() {
                 sectionEntries,
                 renderTextListPreview,
                 renderFieldPreview,
+                renderFilePreview,
+                getFileMetadata,
             });
         } else {
             restoreAllPublishedPreviews({
@@ -1728,6 +1938,8 @@ function getFirstValidationMessage() {
                 editorState,
                 renderTextListPreview,
                 renderFieldPreview,
+                renderFilePreview,
+                resolveFileReference,
             });
         }
 
@@ -1785,12 +1997,13 @@ function getFirstValidationMessage() {
             sectionEntries,
             content: restoredContent,
             resolveImagePreviewUrl,
+            onFileRestored: resolveFileControl,
         });
 
         if (showPreview) {
-            applyAllDrawerPreviews({ drawer, sectionEntries, renderTextListPreview, renderFieldPreview });
+            applyAllDrawerPreviews({ drawer, sectionEntries, renderTextListPreview, renderFieldPreview, renderFilePreview, getFileMetadata });
         } else {
-            restoreAllPublishedPreviews({ sectionEntries, editorState, renderTextListPreview, renderFieldPreview });
+            restoreAllPublishedPreviews({ sectionEntries, editorState, renderTextListPreview, renderFieldPreview, renderFilePreview, resolveFileReference });
         }
 
         onImageUploadStatus?.(null);
@@ -1819,12 +2032,13 @@ function getFirstValidationMessage() {
             sectionEntries,
             content: reconciledContent,
             resolveImagePreviewUrl,
+            onFileRestored: resolveFileControl,
         });
 
         if (showPreview) {
-            applyAllDrawerPreviews({ drawer, sectionEntries, renderTextListPreview, renderFieldPreview });
+            applyAllDrawerPreviews({ drawer, sectionEntries, renderTextListPreview, renderFieldPreview, renderFilePreview, getFileMetadata });
         } else {
-            restoreAllPublishedPreviews({ sectionEntries, editorState, renderTextListPreview, renderFieldPreview });
+            restoreAllPublishedPreviews({ sectionEntries, editorState, renderTextListPreview, renderFieldPreview, renderFilePreview, resolveFileReference });
         }
 
         onImageUploadStatus?.(null);
@@ -1841,6 +2055,8 @@ function getFirstValidationMessage() {
             sectionEntries,
             renderTextListPreview,
             renderFieldPreview,
+            renderFilePreview,
+            getFileMetadata,
         });
     } else {
         restoreAllPublishedPreviews({
@@ -1848,6 +2064,8 @@ function getFirstValidationMessage() {
             editorState,
             renderTextListPreview,
             renderFieldPreview,
+            renderFilePreview,
+            resolveFileReference,
         });
     }
 
@@ -1869,7 +2087,7 @@ function getFirstValidationMessage() {
         setPublishedContent(content) {
             const snapshot = editorState.setPublishedContent(content);
             if (!showPreview) {
-                restoreAllPublishedPreviews({ sectionEntries, editorState, renderTextListPreview, renderFieldPreview });
+                restoreAllPublishedPreviews({ sectionEntries, editorState, renderTextListPreview, renderFieldPreview, renderFilePreview, resolveFileReference });
             }
             return snapshot;
         },

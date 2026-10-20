@@ -846,6 +846,18 @@ textarea.cms-field__control {
     color: #475569;
 }
 
+.cms-field--file { display: grid; gap: 0.45rem; }
+.cms-file-field__action,
+.cms-file-field__current,
+.cms-file-field__hint,
+.cms-file-field__status { margin: 0; }
+.cms-file-field__action { font-weight: 700; }
+.cms-file-field__current { overflow-wrap: anywhere; }
+.cms-file-field__hint { color: #475569; font-size: 0.85rem; }
+.cms-file-field__status { min-height: 1.2em; color: #334155; }
+.cms-file-field__input { max-width: 100%; font: inherit; }
+.cms-file-field__input:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+
 .cms-image-field__current {
     overflow-wrap: anywhere;
     font-size: 0.75rem;

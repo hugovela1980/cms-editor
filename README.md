@@ -102,6 +102,48 @@ The existing `data-cms-preview-field="alt"` target contract is unchanged. Focusi
 
 Optional image fields let editors choose, replace, or remove the current image value. Removing an image is an ordinary draft edit: it clears the field through the normal change and preview flow, and the image can be restored or added again later. The package does not physically delete the underlying uploaded asset when a field is cleared; hosts remain responsible for reference-safe asset cleanup.
 
+## Host-owned file references
+
+Use `CMS_FIELD_TYPES.FILE` for a document whose content value is an opaque, stable string reference. Each field is independent, so a section can hold two or more files. `accept` is a non-empty array of MIME types, wildcard MIME types (such as `text/*`), or filename extensions (such as `.docx`); `maxBytes` is a positive integer. `required`, `label`, `hint`, and `group` use the ordinary field schema rules. The native file chooser is keyboard accessible and shows the current name, replacement action, status, and upload errors. The package validates chosen type and size before upload; the host must validate them again on its server.
+
+```js
+const schema = {
+  id: "documents",
+  label: "Documents",
+  fields: [
+    { key: "webpageDocument", label: "Webpage document", type: CMS_FIELD_TYPES.FILE,
+      accept: [".docx", "text/markdown"], maxBytes: 5_000_000, required: true,
+      hint: "Choose the source document", group: "related-documents" },
+    { key: "downloadDocument", label: "Downloadable document", type: CMS_FIELD_TYPES.FILE,
+      accept: ["application/pdf"], maxBytes: 5_000_000, required: true,
+      group: "related-documents" },
+  ],
+};
+
+initializeCmsEditor({
+  requireSchema,
+  async uploadFile({ sectionPath, schemaId, fieldKey, file }) {
+    // Upload with the host's own authorization and storage rules.
+    // `value` is the only part saved in CMS content.
+    return { value: "stable-version-reference", name: file.name,
+      previewUrl: "https://example.test/fresh-preview" };
+  },
+  async resolveFileReference({ sectionPath, schemaId, fieldKey, value }) {
+    // Called for each restored reference, including initial load, Revert, and Restore.
+    return { name: "Current filename.pdf", previewUrl: "https://example.test/new-preview" };
+  },
+  renderFilePreview({ section, target, field, value, previewUrl }) {
+    // The target is marked with data-cms-preview-field="webpageDocument"
+    // or the matching field key. Render safely with DOM APIs.
+  },
+  async saveChanges({ changes }) {
+    // Changes contain { path, value } with the stable string reference.
+  },
+});
+```
+
+`uploadFile` returns a nonblank `value` and `name`; `previewUrl` is optional and stays in memory. `resolveFileReference` returns display `name` and a fresh optional `previewUrl` for a saved reference. It may be asynchronous. The package ignores a late result when that field's reference changes. `renderFilePreview` receives the stable reference and current preview URL (or `null`) for live edits and restored content; it must clear stale output when a reference is empty or a URL is unavailable. No file content or temporary preview URL is stored in draft content or transient snapshots. The host owns safe preview rendering, reference ownership checks, upload cleanup, and any publication rules. FILE controls do not parse documents or accept `previewAttribute`.
+
 ## Repeatable-item labels
 
 Sections whose content path ends in an array position, such as `services.cards.0`, receive stable structural labels. Set an optional schema `itemNoun` to choose the noun:
